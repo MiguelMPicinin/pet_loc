@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "967703795061",
+    "project_id": "pet-loc-novo",
+    "storage_bucket": "pet-loc-novo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:967703795061:android:91e3c93c8506e6eb7cef3c",
+        "android_client_info": {
+          "package_name": "com.example.pet_loc"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "967703795061-7gjmb383nl6jb4asdjhb2n76erldi6ql.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBRI2qFIsdACk8akfsxIa3_IOLOneh0FC8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "967703795061-7gjmb383nl6jb4asdjhb2n76erldi6ql.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
