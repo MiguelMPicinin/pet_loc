@@ -7,12 +7,12 @@ import '../views/pet/pet_view.dart';
 import '../views/pet/pet_cadastro_view.dart';
 import '../views/pet/pet_CRUD_view.dart';
 import '../views/desaparecidos/desaparecido_view.dart';
-import '../views/desaparecidos/desaparecido_CRUD.dart';
+import '../views//desaparecidos/desaparecido_CRUD.dart';
 import '../views/loja/loja_view.dart';
 import '../views/loja/loja_cadastro_view.dart';
 import '../views/loja/loja_CRUD_view.dart';
 import '../views/blog-chat/chat.dart';
-import '../views/localizacao_pet_view.dart'; // Criar este arquivo
+import '../views/pet/localizacao_pet_view.dart'; // Criar este arquivo
 
 class AppRoutes {
   static const String splash = '/';
@@ -36,7 +36,7 @@ class AppRoutes {
       splash: (context) => TelaSplash(),
       login: (context) => LoginScreen(),
       registro: (context) => CadastroUsuarioScreen(),
-      home: (context) => Home(),
+      home: (context) => HomeView(),
       pets: (context) => PetView(),
       cadastroPet: (context) => PetCadastroView(),
       editarPet: (context) => PetCRUDView(),
