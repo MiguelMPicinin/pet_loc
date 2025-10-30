@@ -1,4 +1,4 @@
-  import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../views/cadastro/login_view.dart';
 import '../views/cadastro/cadastro_view.dart';
 import '../views/home.dart';
@@ -60,3 +60,4 @@ class AppRoutes {
     return routes;
   }
 }
+
