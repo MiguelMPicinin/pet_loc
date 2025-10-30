@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../../navigation/app_routes.dart';
+import '../../services//app_routes.dart';
 
 class CadastroUsuarioScreen extends StatefulWidget {
   @override
