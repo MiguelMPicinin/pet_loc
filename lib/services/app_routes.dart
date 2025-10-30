@@ -34,8 +34,8 @@ class AppRoutes {
   static Map<String, WidgetBuilder> getRoutes(bool isAdmin) {
     Map<String, WidgetBuilder> routes = {
       splash: (context) => TelaSplash(),
-      login: (context) => LoginView(),
-      registro: (context) => CadastroView(),
+      login: (context) => LoginScreen(),
+      registro: (context) => CadastroUsuarioScreen(),
       home: (context) => Home(),
       pets: (context) => PetView(),
       cadastroPet: (context) => PetCadastroView(),
