@@ -1,10 +1,9 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:petloc01/navigation/app_routes.dart';
+import 'package:pet_loc/controller/desaparecidoController.dart';
+import 'package:pet_loc/services/app_routes.dart';
 import 'dart:typed_data';
-import '../controller/desaparecidoController.dart';
-import '../models/user_model.dart'; // Supondo que você tenha um UserModel
 
 class DesaparecidoScreen extends StatefulWidget {
   const DesaparecidoScreen({Key? key}) : super(key: key);

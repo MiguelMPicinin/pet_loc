@@ -247,7 +247,13 @@ class PetController with ChangeNotifier {
     }
   }
 
-  // Limpar imagem selecionada
+  // Método público para remover imagem selecionada
+  void removerImagemSelecionada() {
+    _selectedImage = null;
+    notifyListeners();
+  }
+
+  // Limpar imagem selecionada (método privado)
   void _clearImage() {
     _selectedImage = null;
     notifyListeners();

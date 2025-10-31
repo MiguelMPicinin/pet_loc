@@ -1,6 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:pet_loc/services/app_routes.dart';
+import 'package:pet_loc/views/cadastro/login_view.dart';
+import 'package:pet_loc/views/home.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Inicializa o Firebase
+  await Firebase.initializeApp();
+  
   runApp(const MainApp());
 }
 
@@ -9,10 +19,132 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Hello World!'),
+    return MaterialApp(
+      title: 'PetLoc',
+      theme: ThemeData(
+        primaryColor: const Color(0xFF1a237e),
+        colorScheme: ColorScheme.fromSwatch(
+          primarySwatch: Colors.blue,
+          accentColor: const Color(0xFF00bcd4),
+        ),
+        scaffoldBackgroundColor: Colors.white,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF1a237e),
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: Color(0xFF1a237e),
+          foregroundColor: Colors.white,
+        ),
+      ),
+      home: const AuthWrapper(),
+      routes: AppRoutes.getRoutes(),
+      debugShowCheckedModeBanner: false,
+    );
+  }
+}
+
+// Widget que verifica o estado de autenticação
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  User? _user;
+  bool _isCheckingAuth = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthState();
+  }
+
+  Future<void> _checkAuthState() async {
+    // Aguarda um breve momento para inicialização
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    // Verifica o usuário atual
+    final currentUser = FirebaseAuth.instance.currentUser;
+    
+    setState(() {
+      _user = currentUser;
+      _isCheckingAuth = false;
+    });
+
+    // Escuta mudanças futuras no estado de autenticação
+    FirebaseAuth.instance.authStateChanges().listen((User? user) {
+      if (mounted) {
+        setState(() {
+          _user = user;
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Mostra tela de splash enquanto verifica autenticação
+    if (_isCheckingAuth) {
+      return const SplashScreen();
+    }
+
+    // Se usuário está logado, vai para Home
+    if (_user != null) {
+      return const HomeView();
+    }
+
+    // Se não está logado, mostra Login
+    return const LoginScreen();
+  }
+}
+
+// Tela de splash personalizada
+class SplashScreen extends StatelessWidget {
+  const SplashScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF1a237e),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Ícone do app
+            const Icon(
+              Icons.pets,
+              size: 80,
+              color: Colors.white,
+            ),
+            const SizedBox(height: 20),
+            // Nome do app
+            const Text(
+              'PetLoc',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Subtítulo
+            const Text(
+              'Cuidando dos seus pets',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.white70,
+              ),
+            ),
+            const SizedBox(height: 30),
+            // Loading indicator
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ],
         ),
       ),
     );

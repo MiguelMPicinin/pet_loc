@@ -216,7 +216,7 @@ class _LojaScreenState extends State<LojaScreen> {
                       onPressed: semEstoque ? null : () {
                         Navigator.pushNamed(
                           context,
-                          AppRoutes.comprarLoja,
+                          AppRoutes.lojaComprar,
                           arguments: produto,
                         );
                       },

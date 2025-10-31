@@ -1,9 +1,10 @@
 import 'dart:io';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../navigation/app_routes.dart';
+import '../../services/app_routes.dart';
 
 class CriarDesaparecidoScreen extends StatefulWidget {
   final Map<String, dynamic>? desaparecidoData;
@@ -34,13 +35,6 @@ class _CriarDesaparecidoScreenState extends State<CriarDesaparecidoScreen> {
       _nomeController.text = widget.desaparecidoData!['nome'] ?? '';
       _descricaoController.text = widget.desaparecidoData!['descricao'] ?? '';
       _contatoController.text = widget.desaparecidoData!['contato'] ?? '';
-      
-      // Carregar imagem se existir
-      if (widget.desaparecidoData!['imagem'] != null && 
-          widget.desaparecidoData!['imagem'].isNotEmpty) {
-        // Em uma implementação real, você precisaria converter base64 para File
-        // Por simplicidade, vamos manter a imagem original
-      }
     }
   }
 
@@ -63,7 +57,8 @@ class _CriarDesaparecidoScreenState extends State<CriarDesaparecidoScreen> {
         if (_imageFile != null) {
           final bytes = await _imageFile!.readAsBytes();
           base64Image = base64Encode(bytes);
-        } else if (_isEditing && widget.desaparecidoData!['imagem'] != null) {
+        } else if (_isEditing && widget.desaparecidoData?['imagem'] != null && 
+                   widget.desaparecidoData!['imagem'].isNotEmpty) {
           // Manter imagem original se não foi alterada
           base64Image = widget.desaparecidoData!['imagem'];
         }
@@ -134,6 +129,47 @@ class _CriarDesaparecidoScreenState extends State<CriarDesaparecidoScreen> {
     });
   }
 
+  Widget _buildImagePreview() {
+    if (_imageFile != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.file(_imageFile!, fit: BoxFit.cover, height: 200, width: double.infinity),
+      );
+    } else if (_isEditing && widget.desaparecidoData?['imagem'] != null && 
+               widget.desaparecidoData!['imagem'].isNotEmpty) {
+      try {
+        Uint8List bytes = base64Decode(widget.desaparecidoData!['imagem']);
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.memory(bytes, fit: BoxFit.cover, height: 200, width: double.infinity),
+        );
+      } catch (e) {
+        return _buildPlaceholderImage();
+      }
+    } else {
+      return _buildPlaceholderImage();
+    }
+  }
+
+  Widget _buildPlaceholderImage() {
+    return Container(
+      height: 200,
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.camera_alt, size: 50, color: Colors.grey),
+          SizedBox(height: 8),
+          Text('Toque para adicionar imagem'),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -153,55 +189,7 @@ class _CriarDesaparecidoScreenState extends State<CriarDesaparecidoScreen> {
             const SizedBox(height: 20),
             GestureDetector(
               onTap: _selectImage,
-              child: Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-                child: _imageFile != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.file(_imageFile!, fit: BoxFit.cover),
-                      )
-                    : widget.desaparecidoData?['imagem'] != null && 
-                      widget.desaparecidoData!['imagem'].isNotEmpty
-                      ? FutureBuilder<Uint8List>(
-                          future: _getImageBytes(widget.desaparecidoData!['imagem']),
-                          builder: (context, snapshot) {
-                            if (snapshot.hasData) {
-                              return ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.memory(
-                                  snapshot.data!,
-                                  fit: BoxFit.cover,
-                                ),
-                              );
-                            }
-                            return const Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.camera_alt, size: 50, color: Colors.grey),
-                                  SizedBox(height: 8),
-                                  Text('Toque para alterar a imagem'),
-                                ],
-                              ),
-                            );
-                          },
-                        )
-                      : const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.camera_alt, size: 50, color: Colors.grey),
-                              SizedBox(height: 8),
-                              Text('Toque para adicionar imagem'),
-                            ],
-                          ),
-                        ),
-              ),
+              child: _buildImagePreview(),
             ),
             const SizedBox(height: 24),
             TextField(
@@ -269,10 +257,6 @@ class _CriarDesaparecidoScreenState extends State<CriarDesaparecidoScreen> {
       ),
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
-  }
-
-  Future<Uint8List> _getImageBytes(String base64String) async {
-    return base64Decode(base64String);
   }
 
   BottomNavigationBar _buildBottomNavigationBar() {

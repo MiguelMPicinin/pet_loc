@@ -7,7 +7,6 @@ import 'package:pet_loc/models/user_model.dart';
 class AuthController with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn.standard();
 
   UserModel? _currentUser;
   bool _isLoading = false;
@@ -18,7 +17,6 @@ class AuthController with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isLoggedIn => _currentUser != null;
-  bool get isLojista => _currentUser?.isLojista ?? false;
 
   AuthController() {
     // Verificar se usuário já está logado ao inicializar
@@ -55,14 +53,13 @@ class AuthController with ChangeNotifier {
   }
 
   // Criar usuário no Firestore
-  Future<void> _createUserInFirestore(String uid, {UserType tipo = UserType.normal}) async {
+  Future<void> _createUserInFirestore(String uid) async {
     final user = _auth.currentUser;
     if (user != null) {
       final userModel = UserModel(
         id: uid,
         nome: user.displayName ?? 'Usuário',
         email: user.email!,
-        tipo: tipo,
       );
       
       await _firestore.collection('users').doc(uid).set(userModel.toFirestore());
@@ -75,7 +72,6 @@ class AuthController with ChangeNotifier {
     required String nome,
     required String email,
     required String senha,
-    required UserType tipo,
   }) async {
     try {
       _setLoading(true);
@@ -96,7 +92,6 @@ class AuthController with ChangeNotifier {
         id: cred.user!.uid,
         nome: nome,
         email: email,
-        tipo: tipo,
       );
 
       await _firestore.collection('users').doc(cred.user!.uid).set(userModel.toFirestore());
@@ -141,45 +136,11 @@ class AuthController with ChangeNotifier {
     }
   }
 
-  // Login com Google
-  Future<bool> signInWithGoogle() async {
-    try {
-      _setLoading(true);
-      _error = null;
-
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) {
-        _setLoading(false);
-        return false;
-      }
-
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
-      
-      // Verificar se é primeiro login
-      if (userCredential.additionalUserInfo?.isNewUser ?? false) {
-        await _createUserInFirestore(userCredential.user!.uid);
-      }
-
-      _setLoading(false);
-      return true;
-    } catch (e) {
-      _error = 'Erro no login com Google: $e';
-      _setLoading(false);
-      return false;
-    }
-  }
 
   // Logout
   Future<void> signOut() async {
     try {
       await _auth.signOut();
-      await _googleSignIn.signOut();
       _currentUser = null;
       _error = null;
       notifyListeners();
@@ -189,21 +150,35 @@ class AuthController with ChangeNotifier {
     }
   }
 
-  // Atualizar tipo de usuário
-  Future<void> updateUserType(UserType newType) async {
+  // Atualizar perfil do usuário
+  Future<bool> updateProfile({
+    required String nome,
+    String? telefone,
+  }) async {
     try {
-      if (_currentUser == null) return;
+      if (_currentUser == null) return false;
 
+      // Atualizar no Authentication (display name)
+      await _auth.currentUser?.updateDisplayName(nome);
+
+      // Atualizar no Firestore
       await _firestore.collection('users').doc(_currentUser!.id).update({
-        'tipo': newType.index,
+        'nome': nome,
+        'telefone': telefone,
         'atualizadoEm': FieldValue.serverTimestamp(),
       });
 
-      _currentUser = _currentUser!.copyWith(tipo: newType);
+      _currentUser = _currentUser!.copyWith(
+        nome: nome,
+        telefone: telefone,
+      );
       notifyListeners();
+      
+      return true;
     } catch (e) {
-      _error = 'Erro ao atualizar tipo de usuário: $e';
+      _error = 'Erro ao atualizar perfil: $e';
       notifyListeners();
+      return false;
     }
   }
 
