@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:pet_loc/models/user.dart';
+import 'package:pet_loc/models/user_model.dart';
 
 class AuthController with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
-import '../models/desaparecidos.dart';
+import '../models/desaparecidos_model.dart';
 
 class DesaparecidosController with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

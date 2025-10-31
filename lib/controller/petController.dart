@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:pet_loc/models/pet.dart';
-import '../models/pet.dart';
+import 'package:pet_loc/models/pet_model.dart';
+import '../models/pet_model.dart';
 
 class PetController with ChangeNotifier {
   final DatabaseReference _database = FirebaseDatabase.instance.ref();

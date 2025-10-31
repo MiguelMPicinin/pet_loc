@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
-import '../models/produto.dart';
-import '../models/loja.dart';
+import '../models/produto_model.dart';
+import '../models/loja_model.dart';
 
 class LojaController with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

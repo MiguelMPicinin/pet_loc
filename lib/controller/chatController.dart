@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/chat.dart' hide MensagemModel;
-import '../models/mensagem.dart' hide ChatModel;
+import '../models/chat_model.dart' hide MensagemModel;
+import '../models/mensagem_model.dart' hide ChatModel;
 
 class ChatController with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

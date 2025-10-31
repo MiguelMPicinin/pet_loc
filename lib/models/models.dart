@@ -1,6 +1,6 @@
-export './user.dart';
-export './produto.dart';
-export './pet.dart';
+export 'user_model.dart';
+export 'produto_model.dart';
+export 'pet_model.dart';
 export './models.dart';
-export './loja.dart';
-export './desaparecidos.dart';
+export 'loja_model.dart';
+export 'desaparecidos_model.dart';

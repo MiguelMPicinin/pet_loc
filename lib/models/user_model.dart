@@ -1,17 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum UserType {
-  normal,
-  lojista,
-}
-
 class UserModel {
   final String? id;
   final String nome;
   final String email;
   final String? telefone;
   final String? fotoUrl;
-  final UserType tipo;
   final DateTime? criadoEm;
   final DateTime? atualizadoEm;
 
@@ -21,7 +15,6 @@ class UserModel {
     required this.email,
     this.telefone,
     this.fotoUrl,
-    this.tipo = UserType.normal,
     this.criadoEm,
     this.atualizadoEm,
   });
@@ -34,7 +27,6 @@ class UserModel {
       email: data['email'] ?? '',
       telefone: data['telefone'],
       fotoUrl: data['fotoUrl'],
-      tipo: UserType.values[data['tipo'] ?? 0],
       criadoEm: data['criadoEm']?.toDate(),
       atualizadoEm: data['atualizadoEm']?.toDate(),
     );
@@ -46,14 +38,10 @@ class UserModel {
       'email': email,
       'telefone': telefone,
       'fotoUrl': fotoUrl,
-      'tipo': tipo.index,
       'criadoEm': FieldValue.serverTimestamp(),
       'atualizadoEm': FieldValue.serverTimestamp(),
     };
   }
-
-  bool get isLojista => tipo == UserType.lojista;
-  bool get isNormal => tipo == UserType.normal;
 
   UserModel copyWith({
     String? id,
@@ -61,7 +49,6 @@ class UserModel {
     String? email,
     String? telefone,
     String? fotoUrl,
-    UserType? tipo,
     DateTime? criadoEm,
     DateTime? atualizadoEm,
   }) {
@@ -71,7 +58,6 @@ class UserModel {
       email: email ?? this.email,
       telefone: telefone ?? this.telefone,
       fotoUrl: fotoUrl ?? this.fotoUrl,
-      tipo: tipo ?? this.tipo,
       criadoEm: criadoEm ?? this.criadoEm,
       atualizadoEm: atualizadoEm ?? this.atualizadoEm,
     );

@@ -5,8 +5,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../models/location.dart';
-import '../models/area_busca.dart';
+import '../models/location_model.dart';
+import '../models/area_busca_model.dart';
 
 class LocationController with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
