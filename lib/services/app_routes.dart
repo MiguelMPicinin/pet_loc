@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pet_loc/views/Loja/loja_view.dart';
 import 'package:pet_loc/views/desaparecidos/desaparecido_cadastro_view.dart';
 import '../views/cadastro/login_view.dart';
 import '../views/cadastro/cadastro_view.dart';
