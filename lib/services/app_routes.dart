@@ -1,19 +1,20 @@
+
+
 import 'package:flutter/material.dart';
 import 'package:pet_loc/views/Loja/loja_view.dart';
+import 'package:pet_loc/views/blog-chat/blog_view.dart';
+import 'package:pet_loc/views/blog-chat/chat_view.dart';
+import 'package:pet_loc/views/cadastro/cadastro_view.dart';
+import 'package:pet_loc/views/cadastro/login_view.dart';
 import 'package:pet_loc/views/desaparecidos/desaparecido_cadastro_view.dart';
-import '../views/cadastro/login_view.dart';
-import '../views/cadastro/cadastro_view.dart';
-import '../views/home.dart';
-import '../views/tela_splash.dart';
-import '../views/pet/pet_view.dart';
-import '../views/pet/pet_cadastro_view.dart';
-import '../views/pet/pet_CRUD_view.dart';
-import '../views/desaparecidos/desaparecido_view.dart';
-import '../views/loja/loja_view.dart';
-import '../views/loja/loja_comprar.dart';
-import '../views/blog-chat/chat_view.dart';
-import '../views/blog-chat/blog_view.dart';
-import '../views/pet/localizacao_pet_view.dart';
+import 'package:pet_loc/views/desaparecidos/desaparecido_view.dart';
+import 'package:pet_loc/views/home.dart';
+import 'package:pet_loc/views/loja/loja_comprar.dart';
+import 'package:pet_loc/views/pet/localizacao_pet_view.dart';
+import 'package:pet_loc/views/pet/pet_CRUD_view.dart';
+import 'package:pet_loc/views/pet/pet_cadastro_view.dart';
+import 'package:pet_loc/views/pet/pet_view.dart';
+import 'package:pet_loc/views/tela_splash.dart';
 
 class AppRoutes {
   static const String splash = '/';

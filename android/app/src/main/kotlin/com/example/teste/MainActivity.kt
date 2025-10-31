@@ -1,4 +1,4 @@
-package com.example.pet_loc
+package com.example.teste
 
 import io.flutter.embedding.android.FlutterActivity
 
