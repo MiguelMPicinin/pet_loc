@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/app_routes.dart';
+import 'package:pet_loc/services/app_routes.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -17,19 +17,19 @@ class _HomeViewState extends State<HomeView> {
     });
     switch (index) {
       case 0:
-        Navigator.pushReplacementNamed(context, AppRoutes.home);
+        // Já está na home
         break;
       case 1:
-        Navigator.pushReplacementNamed(context, AppRoutes.pets);
+        Navigator.pushNamed(context, AppRoutes.pets);
         break;
       case 2:
-        Navigator.pushReplacementNamed(context, AppRoutes.desaparecidos);
+        Navigator.pushNamed(context, AppRoutes.desaparecidos);
         break;
       case 3:
-        Navigator.pushReplacementNamed(context, AppRoutes.loja);
+        Navigator.pushNamed(context, AppRoutes.loja);
         break;
       case 4:
-        Navigator.pushReplacementNamed(context, AppRoutes.blog);
+        Navigator.pushNamed(context, AppRoutes.blog);
         break;
     }
   }
@@ -37,12 +37,17 @@ class _HomeViewState extends State<HomeView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('PetLoc'),
+        backgroundColor: const Color(0xFF1a237e),
+        foregroundColor: Colors.white,
+      ),
       body: Column(
         children: [
           // Top half: Navy blue background with pet circles
           Container(
             height: MediaQuery.of(context).size.height * 0.4,
-            color: Colors.blue[900],
+            color: const Color(0xFF1a237e),
             child: Center(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -52,7 +57,7 @@ class _HomeViewState extends State<HomeView> {
                     radius: 40,
                     backgroundColor: Colors.white,
                     child: IconButton(
-                      icon: const Icon(Icons.add, color: Colors.blue),
+                      icon: const Icon(Icons.add, color: Color(0xFF1a237e)),
                       onPressed: () {
                         Navigator.pushNamed(context, AppRoutes.cadastroPet);
                       },
@@ -63,13 +68,13 @@ class _HomeViewState extends State<HomeView> {
                   CircleAvatar(
                     radius: 40,
                     backgroundColor: Colors.white,
-                    child: const Icon(Icons.pets, color: Colors.blue),
+                    child: const Icon(Icons.pets, color: Color(0xFF1a237e)),
                   ),
                   const SizedBox(width: 20),
                   CircleAvatar(
                     radius: 40,
                     backgroundColor: Colors.white,
-                    child: const Icon(Icons.pets, color: Colors.blue),
+                    child: const Icon(Icons.pets, color: Color(0xFF1a237e)),
                   ),
                 ],
               ),
@@ -126,7 +131,7 @@ class _HomeViewState extends State<HomeView> {
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blue,
+        selectedItemColor: const Color(0xFF1a237e),
         unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
       ),
@@ -145,11 +150,12 @@ class _HomeViewState extends State<HomeView> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 48, color: Colors.blue),
+              Icon(icon, size: 48, color: const Color(0xFF1a237e)),
               const SizedBox(height: 8),
               Text(
                 title,
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
               ),
             ],
           ),

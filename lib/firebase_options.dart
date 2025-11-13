@@ -54,9 +54,10 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBRI2qFIsdACk8akfsxIa3_IOLOneh0FC8',
-    appId: '1:967703795061:android:91e3c93c8506e6eb7cef3c',
+    appId: '1:967703795061:android:aeca8f876a6638827cef3c',
     messagingSenderId: '967703795061',
     projectId: 'pet-loc-novo',
     storageBucket: 'pet-loc-novo.firebasestorage.app',
   );
+
 }

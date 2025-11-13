@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/material.dart';
 import 'package:pet_loc/views/Loja/loja_view.dart';
 import 'package:pet_loc/views/blog-chat/blog_view.dart';
@@ -14,10 +12,8 @@ import 'package:pet_loc/views/pet/localizacao_pet_view.dart';
 import 'package:pet_loc/views/pet/pet_CRUD_view.dart';
 import 'package:pet_loc/views/pet/pet_cadastro_view.dart';
 import 'package:pet_loc/views/pet/pet_view.dart';
-import 'package:pet_loc/views/tela_splash.dart';
 
 class AppRoutes {
-  static const String splash = '/';
   static const String login = '/login';
   static const String registro = '/registro';
   static const String home = '/home';
@@ -35,7 +31,6 @@ class AppRoutes {
 
   static Map<String, WidgetBuilder> getRoutes() {
     return {
-      splash: (context) => const TelaSplash(),
       login: (context) => const LoginScreen(),
       registro: (context) => CadastroUsuarioScreen(),
       home: (context) => const HomeView(),

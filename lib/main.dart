@@ -64,25 +64,36 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _checkAuthState() async {
-    // Aguarda um breve momento para inicialização
-    await Future.delayed(const Duration(milliseconds: 500));
-    
-    // Verifica o usuário atual
-    final currentUser = FirebaseAuth.instance.currentUser;
-    
-    setState(() {
-      _user = currentUser;
-      _isCheckingAuth = false;
-    });
-
-    // Escuta mudanças futuras no estado de autenticação
-    FirebaseAuth.instance.authStateChanges().listen((User? user) {
+    try {
+      // Aguarda inicialização do Firebase
+      await Firebase.initializeApp();
+      
+      // Verifica o usuário atual
+      final currentUser = FirebaseAuth.instance.currentUser;
+      
       if (mounted) {
         setState(() {
-          _user = user;
+          _user = currentUser;
+          _isCheckingAuth = false;
         });
       }
-    });
+
+      // Escuta mudanças futuras no estado de autenticação
+      FirebaseAuth.instance.authStateChanges().listen((User? user) {
+        if (mounted) {
+          setState(() {
+            _user = user;
+          });
+        }
+      });
+    } catch (e) {
+      print('Erro na verificação de autenticação: $e');
+      if (mounted) {
+        setState(() {
+          _isCheckingAuth = false;
+        });
+      }
+    }
   }
 
   @override
