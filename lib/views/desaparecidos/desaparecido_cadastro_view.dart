@@ -28,13 +28,32 @@ class _CriarDesaparecidoScreenState extends State<CriarDesaparecidoScreen> {
   void initState() {
     super.initState();
     
-    // Verificar se está editando
     if (widget.desaparecidoData != null) {
       _isEditing = true;
       _desaparecidoId = widget.desaparecidoData!['id'];
       _nomeController.text = widget.desaparecidoData!['nome'] ?? '';
       _descricaoController.text = widget.desaparecidoData!['descricao'] ?? '';
       _contatoController.text = widget.desaparecidoData!['contato'] ?? '';
+    }
+  }
+
+  void _onItemTapped(int index) {
+    switch (index) {
+      case 0:
+        Navigator.pushReplacementNamed(context, AppRoutes.home);
+        break;
+      case 1:
+        Navigator.pushReplacementNamed(context, AppRoutes.pets);
+        break;
+      case 2:
+        Navigator.pushReplacementNamed(context, AppRoutes.desaparecidos);
+        break;
+      case 3:
+        Navigator.pushReplacementNamed(context, AppRoutes.loja);
+        break;
+      case 4:
+        Navigator.pushReplacementNamed(context, AppRoutes.blog);
+        break;
     }
   }
 
@@ -59,15 +78,13 @@ class _CriarDesaparecidoScreenState extends State<CriarDesaparecidoScreen> {
           base64Image = base64Encode(bytes);
         } else if (_isEditing && widget.desaparecidoData?['imagem'] != null && 
                    widget.desaparecidoData!['imagem'].isNotEmpty) {
-          // Manter imagem original se não foi alterada
           base64Image = widget.desaparecidoData!['imagem'];
         }
 
         final FirebaseFirestore firestore = FirebaseFirestore.instance;
-        final String currentUserId = 'user123'; // Substitua pelo ID real do usuário
+        final String currentUserId = 'user123';
 
         if (_isEditing) {
-          // Atualizar registro existente
           await firestore.collection('desaparecidos').doc(_desaparecidoId).update({
             'nome': _nomeController.text,
             'descricao': _descricaoController.text,
@@ -76,7 +93,6 @@ class _CriarDesaparecidoScreenState extends State<CriarDesaparecidoScreen> {
             'atualizadoEm': FieldValue.serverTimestamp(),
           });
         } else {
-          // Criar novo registro
           await firestore.collection('desaparecidos').add({
             'nome': _nomeController.text,
             'descricao': _descricaoController.text,
@@ -255,43 +271,27 @@ class _CriarDesaparecidoScreenState extends State<CriarDesaparecidoScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      bottomNavigationBar: _buildBottomNavigationBar(2),
     );
   }
 
-  BottomNavigationBar _buildBottomNavigationBar() {
+  Widget _buildBottomNavigationBar(int currentIndex) {
     return BottomNavigationBar(
-      backgroundColor: Colors.white,
-      selectedItemColor: const Color(0xFF1A73E8),
-      unselectedItemColor: Colors.grey[600],
-      currentIndex: 1,
-      type: BottomNavigationBarType.fixed,
-      onTap: (index) {
-        switch (index) {
-          case 0:
-            Navigator.pushReplacementNamed(context, AppRoutes.home);
-            break;
-          case 1:
-            // Já está na tela de criar
-            break;
-          case 2:
-            Navigator.pushReplacementNamed(context, AppRoutes.loja);
-            break;
-          case 3:
-            Navigator.pushReplacementNamed(context, AppRoutes.desaparecidos);
-            break;
-        }
-      },
-      items: const [
+      items: const <BottomNavigationBarItem>[
         BottomNavigationBarItem(
           icon: Icon(Icons.home_outlined),
           activeIcon: Icon(Icons.home),
           label: 'Home',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.add_circle_outlined),
-          activeIcon: Icon(Icons.add_circle),
-          label: 'Criar',
+          icon: Icon(Icons.pets_outlined),
+          activeIcon: Icon(Icons.pets),
+          label: 'Pets',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.warning_outlined),
+          activeIcon: Icon(Icons.warning),
+          label: 'Desaparecidos',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.shopping_cart_outlined),
@@ -299,11 +299,18 @@ class _CriarDesaparecidoScreenState extends State<CriarDesaparecidoScreen> {
           label: 'Loja',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.pets_outlined),
-          activeIcon: Icon(Icons.pets),
-          label: 'Desaparecidos',
+          icon: Icon(Icons.article_outlined),
+          activeIcon: Icon(Icons.article),
+          label: 'Blog',
         ),
       ],
+      currentIndex: currentIndex,
+      selectedItemColor: const Color(0xFF1a237e),
+      unselectedItemColor: Colors.grey,
+      type: BottomNavigationBarType.fixed,
+      backgroundColor: Colors.white,
+      elevation: 8,
+      onTap: _onItemTapped,
     );
   }
 }

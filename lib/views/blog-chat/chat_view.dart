@@ -29,6 +29,26 @@ class _ChatViewState extends State<ChatView> {
   String _categoriaSelecionada = 'Todos';
   String _categoriaNovoGrupo = 'Geral';
 
+  void _onItemTapped(int index) {
+    switch (index) {
+      case 0:
+        Navigator.pushReplacementNamed(context, AppRoutes.home);
+        break;
+      case 1:
+        Navigator.pushReplacementNamed(context, AppRoutes.pets);
+        break;
+      case 2:
+        Navigator.pushReplacementNamed(context, AppRoutes.desaparecidos);
+        break;
+      case 3:
+        Navigator.pushReplacementNamed(context, AppRoutes.loja);
+        break;
+      case 4:
+        // Já está no blog
+        break;
+    }
+  }
+
   Widget _buildCategoriaChip(String categoria) {
     final bool isSelected = categoria == _categoriaSelecionada;
     return GestureDetector(
@@ -115,11 +135,9 @@ class _ChatViewState extends State<ChatView> {
 
       await _firestore.collection('chat_grupos').add(novoGrupo);
 
-      // Limpar campos
       _nomeController.clear();
       _descricaoController.clear();
       
-      // Fechar dialog
       Navigator.of(context).pop();
       
       ScaffoldMessenger.of(context).showSnackBar(
@@ -173,9 +191,6 @@ class _ChatViewState extends State<ChatView> {
           backgroundColor: Colors.green,
         ),
       );
-
-      // Aqui você pode navegar para a tela de mensagens do grupo
-      // Navigator.pushNamed(context, AppRoutes.chatGrupo, arguments: grupoId);
 
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -374,8 +389,6 @@ class _ChatViewState extends State<ChatView> {
             if (!isMembro) {
               _entrarNoGrupo(doc.id, data['nome'] ?? 'Grupo');
             } else {
-              // Navegar para tela de mensagens do grupo
-              // Navigator.pushNamed(context, AppRoutes.chatGrupo, arguments: doc.id);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Abrindo conversa do grupo ${data['nome']}'),
@@ -513,46 +526,27 @@ class _ChatViewState extends State<ChatView> {
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      bottomNavigationBar: _buildBottomNavigationBar(4),
     );
   }
 
-  BottomNavigationBar _buildBottomNavigationBar() {
+  Widget _buildBottomNavigationBar(int currentIndex) {
     return BottomNavigationBar(
-      backgroundColor: Colors.white,
-      selectedItemColor: const Color(0xFF1A73E8),
-      unselectedItemColor: Colors.grey[600],
-      currentIndex: 4,
-      type: BottomNavigationBarType.fixed,
-      onTap: (index) {
-        switch (index) {
-          case 0:
-            Navigator.pushReplacementNamed(context, AppRoutes.home);
-            break;
-          case 1:
-            Navigator.pushReplacementNamed(context, AppRoutes.criarDesaparecido);
-            break;
-          case 2:
-            Navigator.pushReplacementNamed(context, AppRoutes.loja);
-            break;
-          case 3:
-            Navigator.pushReplacementNamed(context, AppRoutes.desaparecidos);
-            break;
-          case 4:
-            Navigator.pushReplacementNamed(context, AppRoutes.blog);
-            break;
-        }
-      },
-      items: const [
+      items: const <BottomNavigationBarItem>[
         BottomNavigationBarItem(
           icon: Icon(Icons.home_outlined),
           activeIcon: Icon(Icons.home),
           label: 'Home',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.add_circle_outlined),
-          activeIcon: Icon(Icons.add_circle),
-          label: 'Criar',
+          icon: Icon(Icons.pets_outlined),
+          activeIcon: Icon(Icons.pets),
+          label: 'Pets',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.warning_outlined),
+          activeIcon: Icon(Icons.warning),
+          label: 'Desaparecidos',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.shopping_cart_outlined),
@@ -560,16 +554,18 @@ class _ChatViewState extends State<ChatView> {
           label: 'Loja',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.pets_outlined),
-          activeIcon: Icon(Icons.pets),
-          label: 'Desaparecidos',
-        ),
-        BottomNavigationBarItem(
           icon: Icon(Icons.article_outlined),
           activeIcon: Icon(Icons.article),
           label: 'Blog',
         ),
       ],
+      currentIndex: currentIndex,
+      selectedItemColor: const Color(0xFF1a237e),
+      unselectedItemColor: Colors.grey,
+      type: BottomNavigationBarType.fixed,
+      backgroundColor: Colors.white,
+      elevation: 8,
+      onTap: _onItemTapped,
     );
   }
 }

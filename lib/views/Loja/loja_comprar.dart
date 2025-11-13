@@ -16,6 +16,26 @@ class ComprarLojaScreen extends StatefulWidget {
 class _ComprarLojaScreenState extends State<ComprarLojaScreen> {
   int _quantidade = 1;
 
+  void _onItemTapped(int index) {
+    switch (index) {
+      case 0:
+        Navigator.pushReplacementNamed(context, AppRoutes.home);
+        break;
+      case 1:
+        Navigator.pushReplacementNamed(context, AppRoutes.pets);
+        break;
+      case 2:
+        Navigator.pushReplacementNamed(context, AppRoutes.desaparecidos);
+        break;
+      case 3:
+        // Já está na loja
+        break;
+      case 4:
+        Navigator.pushReplacementNamed(context, AppRoutes.blog);
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final produto = widget.produto;
@@ -386,7 +406,7 @@ class _ComprarLojaScreenState extends State<ComprarLojaScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      bottomNavigationBar: _buildBottomNavigationBar(3),
     );
   }
 
@@ -400,6 +420,45 @@ class _ComprarLojaScreenState extends State<ComprarLojaScreen> {
           Text(text),
         ],
       ),
+    );
+  }
+
+  Widget _buildBottomNavigationBar(int currentIndex) {
+    return BottomNavigationBar(
+      items: const <BottomNavigationBarItem>[
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_outlined),
+          activeIcon: Icon(Icons.home),
+          label: 'Home',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.pets_outlined),
+          activeIcon: Icon(Icons.pets),
+          label: 'Pets',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.warning_outlined),
+          activeIcon: Icon(Icons.warning),
+          label: 'Desaparecidos',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.shopping_cart_outlined),
+          activeIcon: Icon(Icons.shopping_cart),
+          label: 'Loja',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.article_outlined),
+          activeIcon: Icon(Icons.article),
+          label: 'Blog',
+        ),
+      ],
+      currentIndex: currentIndex,
+      selectedItemColor: const Color(0xFF1a237e),
+      unselectedItemColor: Colors.grey,
+      type: BottomNavigationBarType.fixed,
+      backgroundColor: Colors.white,
+      elevation: 8,
+      onTap: _onItemTapped,
     );
   }
 
@@ -430,54 +489,6 @@ class _ComprarLojaScreenState extends State<ComprarLojaScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  BottomNavigationBar _buildBottomNavigationBar() {
-    return BottomNavigationBar(
-      backgroundColor: Colors.white,
-      selectedItemColor: const Color(0xFF1A73E8),
-      unselectedItemColor: Colors.grey[600],
-      currentIndex: 2,
-      type: BottomNavigationBarType.fixed,
-      onTap: (index) {
-        switch (index) {
-          case 0:
-            Navigator.pushReplacementNamed(context, AppRoutes.home);
-            break;
-          case 1:
-            Navigator.pushReplacementNamed(context, AppRoutes.criarDesaparecido);
-            break;
-          case 2:
-            Navigator.pushReplacementNamed(context, AppRoutes.loja);
-            break;
-          case 3:
-            Navigator.pushReplacementNamed(context, AppRoutes.desaparecidos);
-            break;
-        }
-      },
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          activeIcon: Icon(Icons.home),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.list_alt_outlined),
-          activeIcon: Icon(Icons.list_alt),
-          label: 'Lista',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.shopping_cart_outlined),
-          activeIcon: Icon(Icons.shopping_cart),
-          label: 'Loja',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.pets_outlined),
-          activeIcon: Icon(Icons.pets),
-          label: 'Pets',
-        ),
-      ],
     );
   }
 }

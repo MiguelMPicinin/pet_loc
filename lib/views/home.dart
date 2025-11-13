@@ -107,34 +107,7 @@ class _HomeViewState extends State<HomeView> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.pets),
-            label: 'Pets',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.warning),
-            label: 'Desaparecidos',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: 'Loja',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat),
-            label: 'Blog/Chat',
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: const Color(0xFF1a237e),
-        unselectedItemColor: Colors.grey,
-        onTap: _onItemTapped,
-      ),
+      bottomNavigationBar: _buildBottomNavigationBar(0),
     );
   }
 
@@ -163,4 +136,43 @@ class _HomeViewState extends State<HomeView> {
       ),
     );
   }
-}
+
+  Widget _buildBottomNavigationBar(int currentIndex) {
+    return BottomNavigationBar(
+      items: const <BottomNavigationBarItem>[
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_outlined),
+          activeIcon: Icon(Icons.home),
+          label: 'Home',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.pets_outlined),
+          activeIcon: Icon(Icons.pets),
+          label: 'Pets',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.warning_outlined),
+          activeIcon: Icon(Icons.warning),
+          label: 'Desaparecidos',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.shopping_cart_outlined),
+          activeIcon: Icon(Icons.shopping_cart),
+          label: 'Loja',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.article_outlined),
+          activeIcon: Icon(Icons.article),
+          label: 'Blog',
+        ),
+      ],
+      currentIndex: currentIndex,
+      selectedItemColor: const Color(0xFF1a237e),
+      unselectedItemColor: Colors.grey,
+      type: BottomNavigationBarType.fixed,
+      backgroundColor: Colors.white,
+      elevation: 8,
+      onTap: _onItemTapped,
+    );
+  }
+}   

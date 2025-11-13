@@ -21,6 +21,25 @@ class _BlogViewState extends State<BlogView> {
   ];
   String _categoriaSelecionada = 'Todos';
 
+  void _onItemTapped(int index) {
+    switch (index) {
+      case 0:
+        Navigator.pushReplacementNamed(context, AppRoutes.home);
+        break;
+      case 1:
+        Navigator.pushReplacementNamed(context, AppRoutes.pets);
+        break;
+      case 2:
+        Navigator.pushReplacementNamed(context, AppRoutes.desaparecidos);
+        break;
+      case 3:
+        Navigator.pushReplacementNamed(context, AppRoutes.loja);
+        break;
+      case 4:
+        break;
+    }
+  }
+
   Widget _buildCategoriaChip(String categoria) {
     final bool isSelected = categoria == _categoriaSelecionada;
     return GestureDetector(
@@ -314,45 +333,27 @@ class _BlogViewState extends State<BlogView> {
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      bottomNavigationBar: _buildBottomNavigationBar(4),
     );
   }
 
-  BottomNavigationBar _buildBottomNavigationBar() {
+  Widget _buildBottomNavigationBar(int currentIndex) {
     return BottomNavigationBar(
-      backgroundColor: Colors.white,
-      selectedItemColor: const Color(0xFF1A73E8),
-      unselectedItemColor: Colors.grey[600],
-      currentIndex: 4,
-      type: BottomNavigationBarType.fixed,
-      onTap: (index) {
-        switch (index) {
-          case 0:
-            Navigator.pushReplacementNamed(context, AppRoutes.home);
-            break;
-          case 1:
-            Navigator.pushReplacementNamed(context, AppRoutes.criarDesaparecido);
-            break;
-          case 2:
-            Navigator.pushReplacementNamed(context, AppRoutes.loja);
-            break;
-          case 3:
-            Navigator.pushReplacementNamed(context, AppRoutes.desaparecidos);
-            break;
-          case 4:
-            break;
-        }
-      },
-      items: const [
+      items: const <BottomNavigationBarItem>[
         BottomNavigationBarItem(
           icon: Icon(Icons.home_outlined),
           activeIcon: Icon(Icons.home),
           label: 'Home',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.add_circle_outlined),
-          activeIcon: Icon(Icons.add_circle),
-          label: 'Criar',
+          icon: Icon(Icons.pets_outlined),
+          activeIcon: Icon(Icons.pets),
+          label: 'Pets',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.warning_outlined),
+          activeIcon: Icon(Icons.warning),
+          label: 'Desaparecidos',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.shopping_cart_outlined),
@@ -360,16 +361,18 @@ class _BlogViewState extends State<BlogView> {
           label: 'Loja',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.pets_outlined),
-          activeIcon: Icon(Icons.pets),
-          label: 'Desaparecidos',
-        ),
-        BottomNavigationBarItem(
           icon: Icon(Icons.article_outlined),
           activeIcon: Icon(Icons.article),
           label: 'Blog',
         ),
       ],
+      currentIndex: currentIndex,
+      selectedItemColor: const Color(0xFF1a237e),
+      unselectedItemColor: Colors.grey,
+      type: BottomNavigationBarType.fixed,
+      backgroundColor: Colors.white,
+      elevation: 8,
+      onTap: _onItemTapped,
     );
   }
 }
