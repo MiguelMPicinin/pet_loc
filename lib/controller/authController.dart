@@ -109,7 +109,7 @@ class AuthController with ChangeNotifier {
     }
   }
 
-  // Login com email e senha
+  // Login com email e senha - CORRIGIDO
   Future<bool> signInWithEmailAndPassword({
     required String email,
     required String senha,
@@ -118,12 +118,16 @@ class AuthController with ChangeNotifier {
       _setLoading(true);
       _error = null;
 
-      await _auth.signInWithEmailAndPassword(
+      final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: senha.trim(),
       );
 
-      // _loadUserData será chamado automaticamente pelo authStateChanges
+      // Carregar dados do usuário imediatamente após login
+      if (userCredential.user != null) {
+        await _loadUserData(userCredential.user!.uid);
+      }
+
       _setLoading(false);
       return true;
     } on FirebaseAuthException catch (e) {
@@ -135,7 +139,6 @@ class AuthController with ChangeNotifier {
       return false;
     }
   }
-
 
   // Logout
   Future<void> signOut() async {
@@ -216,6 +219,9 @@ class AuthController with ChangeNotifier {
         break;
       case 'user-disabled':
         _error = 'Esta conta foi desativada.';
+        break;
+      case 'too-many-requests':
+        _error = 'Muitas tentativas. Tente novamente mais tarde.';
         break;
       default:
         _error = 'Erro: ${e.message}';

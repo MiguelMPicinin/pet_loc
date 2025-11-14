@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:pet_loc/controller/petController.dart';
 import 'package:pet_loc/services/app_routes.dart';
 
@@ -14,10 +15,6 @@ class _PetCadastroViewState extends State<PetCadastroView> {
   final TextEditingController _nomeController = TextEditingController();
   final TextEditingController _descricaoController = TextEditingController();
   final TextEditingController _contatoController = TextEditingController();
-  final PetController _controller = PetController();
-
-  bool _isLoading = false;
-  String? _error;
 
   @override
   Widget build(BuildContext context) {
@@ -34,138 +31,142 @@ class _PetCadastroViewState extends State<PetCadastroView> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Form(
-              key: _formKey,
-              child: ListView(
-                children: [
-                  // Seção de Imagem
-                  _buildImageSection(),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Campo Nome
-                  TextFormField(
-                    controller: _nomeController,
-                    decoration: InputDecoration(
-                      labelText: 'Nome do Pet *',
-                      prefixIcon: const Icon(Icons.pets),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey[50],
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor, digite o nome do pet';
-                      }
-                      return null;
-                    },
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Campo Descrição
-                  TextFormField(
-                    controller: _descricaoController,
-                    decoration: InputDecoration(
-                      labelText: 'Descrição *',
-                      prefixIcon: const Icon(Icons.description),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey[50],
-                    ),
-                    maxLines: 3,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor, digite uma descrição';
-                      }
-                      return null;
-                    },
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Campo Contato
-                  TextFormField(
-                    controller: _contatoController,
-                    decoration: InputDecoration(
-                      labelText: 'Contato *',
-                      prefixIcon: const Icon(Icons.phone),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey[50],
-                    ),
-                    keyboardType: TextInputType.phone,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor, digite um contato';
-                      }
-                      return null;
-                    },
-                  ),
-                  
-                  const SizedBox(height: 32),
-                  
-                  // Botão Cadastrar
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _cadastrarPet,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1A73E8),
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation(Colors.white),
-                            ),
-                          )
-                        : const Text(
-                            'Cadastrar Pet',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+      body: Consumer<PetController>(
+        builder: (context, controller, child) {
+          return Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    children: [
+                      // Seção de Imagem
+                      _buildImageSection(controller),
+                      
+                      const SizedBox(height: 24),
+                      
+                      // Campo Nome
+                      TextFormField(
+                        controller: _nomeController,
+                        decoration: InputDecoration(
+                          labelText: 'Nome do Pet *',
+                          prefixIcon: const Icon(Icons.pets),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Por favor, digite o nome do pet';
+                          }
+                          return null;
+                        },
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Campo Descrição
+                      TextFormField(
+                        controller: _descricaoController,
+                        decoration: InputDecoration(
+                          labelText: 'Descrição *',
+                          prefixIcon: const Icon(Icons.description),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                        ),
+                        maxLines: 3,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Por favor, digite uma descrição';
+                          }
+                          return null;
+                        },
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Campo Contato
+                      TextFormField(
+                        controller: _contatoController,
+                        decoration: InputDecoration(
+                          labelText: 'Contato *',
+                          prefixIcon: const Icon(Icons.phone),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                        ),
+                        keyboardType: TextInputType.phone,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Por favor, digite um contato';
+                          }
+                          return null;
+                        },
+                      ),
+                      
+                      const SizedBox(height: 32),
+                      
+                      // Botão Cadastrar
+                      ElevatedButton(
+                        onPressed: controller.isLoading ? null : () => _cadastrarPet(controller),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1A73E8),
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: controller.isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation(Colors.white),
+                                ),
+                              )
+                            : const Text(
+                                'Cadastrar Pet',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Informações adicionais
+                      _buildInfoCard(),
+                    ],
                   ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Informações adicionais
-                  _buildInfoCard(),
-                ],
+                ),
               ),
-            ),
-          ),
-          
-          if (_error != null)
-            Positioned(
-              bottom: 16,
-              left: 16,
-              right: 16,
-              child: _buildErrorBanner(),
-            ),
-        ],
+              
+              if (controller.error != null)
+                Positioned(
+                  bottom: 16,
+                  left: 16,
+                  right: 16,
+                  child: _buildErrorBanner(controller),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildImageSection() {
+  Widget _buildImageSection(PetController controller) {
     return Column(
       children: [
         Container(
@@ -175,14 +176,14 @@ class _PetCadastroViewState extends State<PetCadastroView> {
             color: Colors.grey[200],
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.grey.shade300),
-            image: _controller.selectedImage != null
+            image: controller.selectedImage != null
                 ? DecorationImage(
-                    image: FileImage(_controller.selectedImage!),
+                    image: FileImage(controller.selectedImage!),
                     fit: BoxFit.cover,
                   )
                 : null,
           ),
-          child: _controller.selectedImage == null
+          child: controller.selectedImage == null
               ? const Icon(
                   Icons.pets,
                   size: 60,
@@ -198,7 +199,7 @@ class _PetCadastroViewState extends State<PetCadastroView> {
           children: [
             ElevatedButton.icon(
               onPressed: () async {
-                await _controller.selecionarImagem();
+                await controller.selecionarImagem();
                 setState(() {});
               },
               style: ElevatedButton.styleFrom(
@@ -218,7 +219,7 @@ class _PetCadastroViewState extends State<PetCadastroView> {
             
             ElevatedButton.icon(
               onPressed: () async {
-                await _controller.tirarFoto();
+                await controller.tirarFoto();
                 setState(() {});
               },
               style: ElevatedButton.styleFrom(
@@ -236,12 +237,11 @@ class _PetCadastroViewState extends State<PetCadastroView> {
           ],
         ),
         
-        if (_controller.selectedImage != null) ...[
+        if (controller.selectedImage != null) ...[
           const SizedBox(height: 8),
           TextButton(
             onPressed: () {
-              // Usando o novo método removerImagemSelecionada
-              _controller.removerImagemSelecionada();
+              controller.removerImagemSelecionada();
               setState(() {});
             },
             child: const Text(
@@ -292,7 +292,7 @@ class _PetCadastroViewState extends State<PetCadastroView> {
     );
   }
 
-  Widget _buildErrorBanner() {
+  Widget _buildErrorBanner(PetController controller) {
     return Material(
       elevation: 4,
       borderRadius: BorderRadius.circular(8),
@@ -309,16 +309,14 @@ class _PetCadastroViewState extends State<PetCadastroView> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                _error!,
+                controller.error!,
                 style: const TextStyle(color: Colors.red),
               ),
             ),
             IconButton(
               icon: const Icon(Icons.close, size: 16),
               onPressed: () {
-                setState(() {
-                  _error = null;
-                });
+                controller.clearError();
               },
             ),
           ],
@@ -327,27 +325,16 @@ class _PetCadastroViewState extends State<PetCadastroView> {
     );
   }
 
-  void _cadastrarPet() async {
+  void _cadastrarPet(PetController controller) async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    final success = await _controller.cadastrarPet(
+    final success = await controller.cadastrarPet(
       nome: _nomeController.text,
       descricao: _descricaoController.text,
       contato: _contatoController.text,
-      userId: 'current_user_id', // TODO: Pegar do usuário logado
     );
-
-    setState(() {
-      _isLoading = false;
-      _error = _controller.error;
-    });
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -360,7 +347,7 @@ class _PetCadastroViewState extends State<PetCadastroView> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erro: ${_controller.error}'),
+          content: Text('Erro: ${controller.error}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -372,7 +359,6 @@ class _PetCadastroViewState extends State<PetCadastroView> {
     _nomeController.dispose();
     _descricaoController.dispose();
     _contatoController.dispose();
-    _controller.dispose();
     super.dispose();
   }
 }

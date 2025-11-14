@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:pet_loc/services/app_routes.dart';
+import 'package:pet_loc/controller/grupoChatController.dart';
+import 'package:pet_loc/views/blog-chat/group_chat_view.dart';
+import 'package:provider/provider.dart';
 
-class ChatView extends StatefulWidget {
-  const ChatView({Key? key}) : super(key: key);
+class ChatContent extends StatefulWidget {
+  const ChatContent({Key? key}) : super(key: key);
 
   @override
-  _ChatViewState createState() => _ChatViewState();
+  _ChatContentState createState() => _ChatContentState();
 }
 
-class _ChatViewState extends State<ChatView> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+class _ChatContentState extends State<ChatContent> {
   final TextEditingController _nomeController = TextEditingController();
   final TextEditingController _descricaoController = TextEditingController();
   
@@ -29,24 +29,14 @@ class _ChatViewState extends State<ChatView> {
   String _categoriaSelecionada = 'Todos';
   String _categoriaNovoGrupo = 'Geral';
 
-  void _onItemTapped(int index) {
-    switch (index) {
-      case 0:
-        Navigator.pushReplacementNamed(context, AppRoutes.home);
-        break;
-      case 1:
-        Navigator.pushReplacementNamed(context, AppRoutes.pets);
-        break;
-      case 2:
-        Navigator.pushReplacementNamed(context, AppRoutes.desaparecidos);
-        break;
-      case 3:
-        Navigator.pushReplacementNamed(context, AppRoutes.loja);
-        break;
-      case 4:
-        // Já está no blog
-        break;
-    }
+  @override
+  void initState() {
+    super.initState();
+    // Carregar grupos após um pequeno delay para garantir que o Provider está disponível
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final controller = Provider.of<GroupChatController>(context, listen: false);
+      controller.carregarGrupos();
+    });
   }
 
   Widget _buildCategoriaChip(String categoria) {
@@ -78,24 +68,17 @@ class _ChatViewState extends State<ChatView> {
     );
   }
 
-  Stream<QuerySnapshot> _getGruposStream() {
-    if (_categoriaSelecionada == 'Todos') {
-      return _firestore
-          .collection('chat_grupos')
-          .where('ativo', isEqualTo: true)
-          .orderBy('ultimaMensagemData', descending: true)
-          .snapshots();
-    } else {
-      return _firestore
-          .collection('chat_grupos')
-          .where('ativo', isEqualTo: true)
-          .where('categoria', isEqualTo: _categoriaSelecionada)
-          .orderBy('ultimaMensagemData', descending: true)
-          .snapshots();
-    }
+  Stream<List<Map<String, dynamic>>> _getGruposStream(GroupChatController controller) {
+    return controller.gruposStream.map((grupos) {
+      if (_categoriaSelecionada == 'Todos') {
+        return grupos;
+      } else {
+        return grupos.where((grupo) => grupo['categoria'] == _categoriaSelecionada).toList();
+      }
+    });
   }
 
-  Future<void> _criarNovoGrupo() async {
+  Future<void> _criarNovoGrupo(GroupChatController controller) async {
     if (_nomeController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -106,103 +89,33 @@ class _ChatViewState extends State<ChatView> {
       return;
     }
 
-    try {
-      final user = _auth.currentUser;
-      if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Usuário não autenticado'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
+    final success = await controller.criarGrupo(
+      nome: _nomeController.text.trim(),
+      descricao: _descricaoController.text.trim(),
+      categoria: _categoriaNovoGrupo,
+    );
 
-      final novoGrupo = {
-        'nome': _nomeController.text.trim(),
-        'descricao': _descricaoController.text.trim(),
-        'categoria': _categoriaNovoGrupo,
-        'criadorId': user.uid,
-        'criadorNome': user.displayName ?? 'Usuário',
-        'membros': [user.uid],
-        'membrosCount': 1,
-        'ativo': true,
-        'criadoEm': FieldValue.serverTimestamp(),
-        'ultimaMensagemData': FieldValue.serverTimestamp(),
-        'ultimaMensagem': 'Grupo criado por ${user.displayName ?? "Usuário"}',
-        'icone': _getIconePorCategoria(_categoriaNovoGrupo),
-      };
-
-      await _firestore.collection('chat_grupos').add(novoGrupo);
-
+    if (success) {
       _nomeController.clear();
       _descricaoController.clear();
-      
       Navigator.of(context).pop();
-      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Grupo criado com sucesso!'),
           backgroundColor: Colors.green,
         ),
       );
-    } catch (e) {
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erro ao criar grupo: $e'),
+          content: Text('Erro ao criar grupo: ${controller.error}'),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
 
-  String _getIconePorCategoria(String categoria) {
-    switch (categoria) {
-      case 'Adoção':
-        return '🏠';
-      case 'Saúde':
-        return '🏥';
-      case 'Comportamento':
-        return '🎓';
-      case 'Raças':
-        return '🐕';
-      case 'Nutrição':
-        return '🍖';
-      default:
-        return '💬';
-    }
-  }
-
-  Future<void> _entrarNoGrupo(String grupoId, String grupoNome) async {
-    try {
-      final user = _auth.currentUser;
-      if (user == null) return;
-
-      await _firestore.collection('chat_grupos').doc(grupoId).update({
-        'membros': FieldValue.arrayUnion([user.uid]),
-        'membrosCount': FieldValue.increment(1),
-        'ultimaMensagemData': FieldValue.serverTimestamp(),
-        'ultimaMensagem': '${user.displayName ?? "Novo usuário"} entrou no grupo',
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Você entrou no grupo $grupoNome!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erro ao entrar no grupo: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  void _mostrarDialogoCriarGrupo() {
+  void _mostrarDialogoCriarGrupo(GroupChatController controller) {
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -264,7 +177,7 @@ class _ChatViewState extends State<ChatView> {
                 child: const Text('Cancelar'),
               ),
               ElevatedButton(
-                onPressed: _criarNovoGrupo,
+                onPressed: () => _criarNovoGrupo(controller),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1A73E8),
                 ),
@@ -277,10 +190,8 @@ class _ChatViewState extends State<ChatView> {
     );
   }
 
-  Widget _buildGrupoCard(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>? ?? {};
-    final user = _auth.currentUser;
-    final isMembro = user != null && (data['membros'] as List? ?? []).contains(user.uid);
+  Widget _buildGrupoCard(Map<String, dynamic> grupo, GroupChatController controller) {
+    final isMembro = controller.isMembroDoGrupo(grupo);
 
     return Card(
       elevation: 2,
@@ -303,7 +214,7 @@ class _ChatViewState extends State<ChatView> {
             ),
             child: Center(
               child: Text(
-                data['icone'] ?? '💬',
+                grupo['icone'] ?? '💬',
                 style: const TextStyle(fontSize: 20),
               ),
             ),
@@ -312,7 +223,7 @@ class _ChatViewState extends State<ChatView> {
             children: [
               Expanded(
                 child: Text(
-                  data['nome'] ?? 'Grupo sem nome',
+                  grupo['nome'] ?? 'Grupo sem nome',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -342,7 +253,7 @@ class _ChatViewState extends State<ChatView> {
             children: [
               const SizedBox(height: 4),
               Text(
-                data['descricao'] ?? 'Sem descrição',
+                grupo['descricao'] ?? 'Sem descrição',
                 style: const TextStyle(
                   fontSize: 12,
                   color: Colors.grey,
@@ -356,7 +267,7 @@ class _ChatViewState extends State<ChatView> {
                   Icon(Icons.people, size: 12, color: Colors.grey[600]),
                   const SizedBox(width: 4),
                   Text(
-                    '${data['membrosCount'] ?? 0} membros',
+                    '${grupo['membrosCount'] ?? 0} membros',
                     style: TextStyle(
                       fontSize: 11,
                       color: Colors.grey[600],
@@ -365,7 +276,7 @@ class _ChatViewState extends State<ChatView> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      data['ultimaMensagem'] ?? 'Nenhuma mensagem ainda',
+                      grupo['ultimaMensagem'] ?? 'Nenhuma mensagem ainda',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Colors.black87,
@@ -375,7 +286,7 @@ class _ChatViewState extends State<ChatView> {
                     ),
                   ),
                   Text(
-                    _formatarHora(data['ultimaMensagemData']),
+                    _formatarHora(grupo['ultimaMensagemData']),
                     style: TextStyle(
                       fontSize: 11,
                       color: Colors.grey[600],
@@ -387,17 +298,40 @@ class _ChatViewState extends State<ChatView> {
           ),
           onTap: () {
             if (!isMembro) {
-              _entrarNoGrupo(doc.id, data['nome'] ?? 'Grupo');
+              controller.entrarNoGrupo(grupo['id']).then((success) {
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Você entrou no grupo ${grupo['nome']}!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                  // Recarregar os grupos após entrar
+                  controller.carregarGrupos();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Erro ao entrar no grupo: ${controller.error}'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              });
             } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Abrindo conversa do grupo ${data['nome']}'),
-                  backgroundColor: const Color(0xFF1A73E8),
-                ),
-              );
+              // Navegar para a tela de mensagens do grupo
+              _abrirChatGrupo(grupo);
             }
           },
         ),
+      ),
+    );
+  }
+
+  void _abrirChatGrupo(Map<String, dynamic> grupo) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GroupChatScreen(grupo: grupo),
       ),
     );
   }
@@ -417,155 +351,139 @@ class _ChatViewState extends State<ChatView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1A73E8),
-        elevation: 0,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Consumer<GroupChatController>(
+      builder: (context, controller, child) {
+        if (controller.isLoading && controller.grupos.isEmpty) {
+          return const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1A73E8)),
+            ),
+          );
+        }
+
+        if (controller.error != null) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                Text(
+                  'Erro: ${controller.error}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => controller.carregarGrupos(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1A73E8),
+                  ),
+                  child: const Text('Tentar novamente'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Column(
           children: [
-            Text(
-              'PetLoc Chat',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: ElevatedButton.icon(
+                onPressed: () => _mostrarDialogoCriarGrupo(controller),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1A73E8),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.group_add),
+                label: const Text(
+                  'Criar Novo Grupo',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
-            Text(
-              'Converse com outros donos de pets',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.normal,
+
+            Container(
+              height: 60,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _categorias.length,
+                itemBuilder: (context, index) {
+                  return _buildCategoriaChip(_categorias[index]);
+                },
+              ),
+            ),
+
+            Expanded(
+              child: StreamBuilder<List<Map<String, dynamic>>>(
+                stream: _getGruposStream(controller),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text('Erro ao carregar grupos: ${snapshot.error}'),
+                    );
+                  }
+
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1A73E8)),
+                      ),
+                    );
+                  }
+
+                  final grupos = snapshot.data ?? [];
+
+                  if (grupos.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.group, size: 80, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          Text(
+                            "Nenhum grupo encontrado",
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _categoriaSelecionada == 'Todos' 
+                              ? "Crie o primeiro grupo ou aguarde novos grupos"
+                              : "Nenhum grupo encontrado na categoria $_categoriaSelecionada",
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[500],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: ListView.builder(
+                      itemCount: grupos.length,
+                      itemBuilder: (context, index) => _buildGrupoCard(grupos[index], controller),
+                    ),
+                  );
+                },
               ),
             ),
           ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.group_add, color: Colors.white),
-            onPressed: _mostrarDialogoCriarGrupo,
-            tooltip: 'Criar Grupo',
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Categorias
-          Container(
-            height: 60,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _categorias.length,
-              itemBuilder: (context, index) {
-                return _buildCategoriaChip(_categorias[index]);
-              },
-            ),
-          ),
-
-          // Stream de grupos
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _getGruposStream(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text('Erro ao carregar grupos: ${snapshot.error}'),
-                  );
-                }
-
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1A73E8)),
-                    ),
-                  );
-                }
-
-                final grupos = snapshot.data?.docs ?? [];
-
-                if (grupos.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.group, size: 80, color: Colors.grey[400]),
-                        const SizedBox(height: 16),
-                        Text(
-                          "Nenhum grupo encontrado",
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          "Crie o primeiro grupo ou aguarde novos grupos",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[500],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: ListView.builder(
-                    itemCount: grupos.length,
-                    itemBuilder: (context, index) => _buildGrupoCard(grupos[index]),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: _buildBottomNavigationBar(4),
-    );
-  }
-
-  Widget _buildBottomNavigationBar(int currentIndex) {
-    return BottomNavigationBar(
-      items: const <BottomNavigationBarItem>[
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          activeIcon: Icon(Icons.home),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.pets_outlined),
-          activeIcon: Icon(Icons.pets),
-          label: 'Pets',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.warning_outlined),
-          activeIcon: Icon(Icons.warning),
-          label: 'Desaparecidos',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.shopping_cart_outlined),
-          activeIcon: Icon(Icons.shopping_cart),
-          label: 'Loja',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.article_outlined),
-          activeIcon: Icon(Icons.article),
-          label: 'Blog',
-        ),
-      ],
-      currentIndex: currentIndex,
-      selectedItemColor: const Color(0xFF1a237e),
-      unselectedItemColor: Colors.grey,
-      type: BottomNavigationBarType.fixed,
-      backgroundColor: Colors.white,
-      elevation: 8,
-      onTap: _onItemTapped,
+        );
+      },
     );
   }
 }

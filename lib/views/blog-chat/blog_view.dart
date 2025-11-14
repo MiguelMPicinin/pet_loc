@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:pet_loc/services/app_routes.dart';
 
-class BlogView extends StatefulWidget {
-  const BlogView({Key? key}) : super(key: key);
+class BlogContent extends StatefulWidget {
+  const BlogContent({Key? key}) : super(key: key);
 
   @override
-  _BlogViewState createState() => _BlogViewState();
+  _BlogContentState createState() => _BlogContentState();
 }
 
-class _BlogViewState extends State<BlogView> {
+class _BlogContentState extends State<BlogContent> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final List<String> _categorias = [
     'Todos',
@@ -20,25 +19,6 @@ class _BlogViewState extends State<BlogView> {
     'Adoção'
   ];
   String _categoriaSelecionada = 'Todos';
-
-  void _onItemTapped(int index) {
-    switch (index) {
-      case 0:
-        Navigator.pushReplacementNamed(context, AppRoutes.home);
-        break;
-      case 1:
-        Navigator.pushReplacementNamed(context, AppRoutes.pets);
-        break;
-      case 2:
-        Navigator.pushReplacementNamed(context, AppRoutes.desaparecidos);
-        break;
-      case 3:
-        Navigator.pushReplacementNamed(context, AppRoutes.loja);
-        break;
-      case 4:
-        break;
-    }
-  }
 
   Widget _buildCategoriaChip(String categoria) {
     final bool isSelected = categoria == _categoriaSelecionada;
@@ -149,6 +129,8 @@ class _BlogViewState extends State<BlogView> {
                       height: 1.4,
                       color: Colors.black87,
                     ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -196,183 +178,144 @@ class _BlogViewState extends State<BlogView> {
     );
   }
 
-  String _formatarData(Timestamp? timestamp) {
-    if (timestamp == null) return 'Data desconhecida';
-    
-    final date = timestamp.toDate();
-    return '${date.day}/${date.month}/${date.year}';
+  String _formatarData(dynamic data) {
+    try {
+      if (data == null) return 'Data desconhecida';
+      
+      if (data is Timestamp) {
+        final date = data.toDate();
+        return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+      } else if (data is String) {
+        return data;
+      } else {
+        return 'Data desconhecida';
+      }
+    } catch (e) {
+      return 'Data desconhecida';
+    }
   }
 
   Stream<QuerySnapshot> _getNoticiasStream() {
-    if (_categoriaSelecionada == 'Todos') {
-      return _firestore
-          .collection('blog_posts')
-          .where('ativo', isEqualTo: true)
-          .orderBy('dataPublicacao', descending: true)
-          .snapshots();
-    } else {
-      return _firestore
-          .collection('blog_posts')
-          .where('ativo', isEqualTo: true)
-          .where('categoria', isEqualTo: _categoriaSelecionada)
-          .orderBy('dataPublicacao', descending: true)
-          .snapshots();
+    try {
+      if (_categoriaSelecionada == 'Todos') {
+        return _firestore
+            .collection('blog_posts')
+            .where('ativo', isEqualTo: true)
+            .orderBy('dataPublicacao', descending: true)
+            .snapshots();
+      } else {
+        return _firestore
+            .collection('blog_posts')
+            .where('ativo', isEqualTo: true)
+            .where('categoria', isEqualTo: _categoriaSelecionada)
+            .orderBy('dataPublicacao', descending: true)
+            .snapshots();
+      }
+    } catch (e) {
+      // Retorna um stream vazio em caso de erro
+      return const Stream.empty();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1A73E8),
-        elevation: 0,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'PetLoc Blog',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
-            ),
-            Text(
-              'Notícias e dicas para seu pet',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.chat, color: Colors.white),
-            onPressed: () {
-              Navigator.pushNamed(context, AppRoutes.chat);
+    return Column(
+      children: [
+        // Categorias
+        Container(
+          height: 60,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: _categorias.length,
+            itemBuilder: (context, index) {
+              return _buildCategoriaChip(_categorias[index]);
             },
-            tooltip: 'Abrir Chat',
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Categorias
-          Container(
-            height: 60,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _categorias.length,
-              itemBuilder: (context, index) {
-                return _buildCategoriaChip(_categorias[index]);
-              },
-            ),
-          ),
+        ),
 
-          // Stream de notícias
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _getNoticiasStream(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text('Erro ao carregar notícias: ${snapshot.error}'),
-                  );
-                }
-
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1A73E8)),
-                    ),
-                  );
-                }
-
-                final noticias = snapshot.data?.docs ?? [];
-
-                if (noticias.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.article, size: 80, color: Colors.grey[400]),
-                        const SizedBox(height: 16),
-                        Text(
-                          "Nenhuma notícia encontrada",
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
+        // Stream de notícias
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: _getNoticiasStream(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Erro ao carregar notícias',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[600],
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          "As notícias aparecerão aqui quando forem publicadas",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[500],
-                          ),
-                          textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tente novamente mais tarde',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[500],
                         ),
-                      ],
-                    ),
-                  );
-                }
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: ListView.builder(
-                    itemCount: noticias.length,
-                    itemBuilder: (context, index) => _buildNoticiaCard(noticias[index]),
+                      ),
+                    ],
                   ),
                 );
-              },
-            ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: _buildBottomNavigationBar(4),
-    );
-  }
+              }
 
-  Widget _buildBottomNavigationBar(int currentIndex) {
-    return BottomNavigationBar(
-      items: const <BottomNavigationBarItem>[
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          activeIcon: Icon(Icons.home),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.pets_outlined),
-          activeIcon: Icon(Icons.pets),
-          label: 'Pets',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.warning_outlined),
-          activeIcon: Icon(Icons.warning),
-          label: 'Desaparecidos',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.shopping_cart_outlined),
-          activeIcon: Icon(Icons.shopping_cart),
-          label: 'Loja',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.article_outlined),
-          activeIcon: Icon(Icons.article),
-          label: 'Blog',
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1A73E8)),
+                  ),
+                );
+              }
+
+              final noticias = snapshot.data?.docs ?? [];
+
+              if (noticias.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.article, size: 80, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        "Nenhuma notícia encontrada",
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "As notícias aparecerão aqui quando forem publicadas",
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[500],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: ListView.builder(
+                  itemCount: noticias.length,
+                  itemBuilder: (context, index) => _buildNoticiaCard(noticias[index]),
+                ),
+              );
+            },
+          ),
         ),
       ],
-      currentIndex: currentIndex,
-      selectedItemColor: const Color(0xFF1a237e),
-      unselectedItemColor: Colors.grey,
-      type: BottomNavigationBarType.fixed,
-      backgroundColor: Colors.white,
-      elevation: 8,
-      onTap: _onItemTapped,
     );
   }
 }

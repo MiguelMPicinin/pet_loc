@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:pet_loc/controller/desaparecidoController.dart';
+import 'package:pet_loc/controller/grupoChatController.dart';
+import 'package:pet_loc/controller/lojaController.dart';
+import 'package:pet_loc/controller/petController.dart';
+import 'package:provider/provider.dart';
 import 'package:pet_loc/services/app_routes.dart';
 import 'package:pet_loc/views/cadastro/login_view.dart';
 import 'package:pet_loc/views/home.dart';
+import 'package:pet_loc/controller/chatController.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,28 +25,39 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'PetLoc',
-      theme: ThemeData(
-        primaryColor: const Color(0xFF1a237e),
-        colorScheme: ColorScheme.fromSwatch(
-          primarySwatch: Colors.blue,
-          accentColor: const Color(0xFF00bcd4),
+    return MultiProvider(
+      providers: [
+        // Adicione o PetController como um Provider
+        ChangeNotifierProvider(create: (context) => PetController()),
+        // Adicione o ChatController como um Provider
+        ChangeNotifierProvider(create: (context) => ChatController()),
+        ChangeNotifierProvider(create: (context) => DesaparecidosController()),
+        ChangeNotifierProvider(create: (context) => GroupChatController()),
+        ChangeNotifierProvider(create: (context)=> LojaController()),
+      ],
+      child: MaterialApp(
+        title: 'PetLoc',
+        theme: ThemeData(
+          primaryColor: const Color(0xFF1a237e),
+          colorScheme: ColorScheme.fromSwatch(
+            primarySwatch: Colors.blue,
+            accentColor: const Color(0xFF00bcd4),
+          ),
+          scaffoldBackgroundColor: Colors.white,
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Color(0xFF1a237e),
+            foregroundColor: Colors.white,
+            elevation: 0,
+          ),
+          floatingActionButtonTheme: const FloatingActionButtonThemeData(
+            backgroundColor: Color(0xFF1a237e),
+            foregroundColor: Colors.white,
+          ),
         ),
-        scaffoldBackgroundColor: Colors.white,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF1a237e),
-          foregroundColor: Colors.white,
-          elevation: 0,
-        ),
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: Color(0xFF1a237e),
-          foregroundColor: Colors.white,
-        ),
+        home: const AuthWrapper(),
+        routes: AppRoutes.getRoutes(),
+        debugShowCheckedModeBanner: false,
       ),
-      home: const AuthWrapper(),
-      routes: AppRoutes.getRoutes(),
-      debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -65,9 +82,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   Future<void> _checkAuthState() async {
     try {
-      // Aguarda inicialização do Firebase
-      await Firebase.initializeApp();
-      
       // Verifica o usuário atual
       final currentUser = FirebaseAuth.instance.currentUser;
       

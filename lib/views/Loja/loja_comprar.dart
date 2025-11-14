@@ -31,7 +31,7 @@ class _ComprarLojaScreenState extends State<ComprarLojaScreen> {
         // Já está na loja
         break;
       case 4:
-        Navigator.pushReplacementNamed(context, AppRoutes.blog);
+        Navigator.pushReplacementNamed(context, AppRoutes.community);
         break;
     }
   }

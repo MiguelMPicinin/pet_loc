@@ -1,15 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pet_loc/models/pet_model.dart';
-import '../models/pet_model.dart';
 
 class PetController with ChangeNotifier {
-  final DatabaseReference _database = FirebaseDatabase.instance.ref();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final ImagePicker _imagePicker = ImagePicker();
 
   List<PetModel> _pets = [];
@@ -28,25 +27,27 @@ class PetController with ChangeNotifier {
     _loadPets();
   }
 
-  // Carregar todos os pets
+  // Carregar pets DO USUÁRIO ATUAL
   Future<void> _loadPets() async {
     try {
       _setLoading(true);
+      _error = null;
       
-      // Usando Realtime Database (conforme seus códigos)
-      final snapshot = await _database.child('pets').get();
-      
-      if (snapshot.exists) {
-        final Map<dynamic, dynamic> petsMap = snapshot.value as Map<dynamic, dynamic>;
-        _pets = petsMap.entries.map((entry) {
-          return PetModel.fromRTDB(
-            Map<String, dynamic>.from(entry.value as Map),
-            entry.key as String,
-          );
-        }).toList();
-      } else {
-        _pets = [];
+      final usuarioAtual = _auth.currentUser;
+      if (usuarioAtual == null) {
+        _setLoading(false);
+        return;
       }
+      
+      final querySnapshot = await _firestore
+          .collection('pets')
+          .where('userId', isEqualTo: usuarioAtual.uid) // FILTRAR POR USUÁRIO
+          .orderBy('criadoEm', descending: true)
+          .get();
+      
+      _pets = querySnapshot.docs.map((doc) {
+        return PetModel.fromFirestore(doc);
+      }).toList();
       
       _setLoading(false);
     } catch (e) {
@@ -56,32 +57,41 @@ class PetController with ChangeNotifier {
     }
   }
 
-  // Stream de pets para atualização em tempo real
+  // Stream de pets DO USUÁRIO ATUAL para atualização em tempo real
   Stream<List<PetModel>> get petsStream {
-    return _database.child('pets').onValue.map((event) {
-      final Map<dynamic, dynamic>? data = event.snapshot.value as Map<dynamic, dynamic>?;
-      
-      if (data == null) return [];
-      
-      return data.entries.map((entry) {
-        return PetModel.fromRTDB(
-          Map<String, dynamic>.from(entry.value as Map),
-          entry.key as String,
-        );
+    final usuarioAtual = _auth.currentUser;
+    if (usuarioAtual == null) {
+      return Stream.value([]);
+    }
+    
+    return _firestore
+        .collection('pets')
+        .where('userId', isEqualTo: usuarioAtual.uid) // FILTRAR POR USUÁRIO
+        .orderBy('criadoEm', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return PetModel.fromFirestore(doc);
       }).toList();
     });
   }
 
-  // Cadastrar novo pet
+  // Cadastrar novo pet PARA O USUÁRIO ATUAL
   Future<bool> cadastrarPet({
     required String nome,
     required String descricao,
     required String contato,
-    String? userId,
   }) async {
     try {
       _setLoading(true);
       _error = null;
+
+      final usuarioAtual = _auth.currentUser;
+      if (usuarioAtual == null) {
+        _error = 'Usuário não autenticado';
+        _setLoading(false);
+        return false;
+      }
 
       String? imagemBase64;
       if (_selectedImage != null) {
@@ -89,36 +99,35 @@ class PetController with ChangeNotifier {
         imagemBase64 = base64Encode(bytes);
       }
 
-      final novoPetRef = _database.child('pets').push();
-      final petId = novoPetRef.key!;
-
       final pet = PetModel(
-        id: petId,
         nome: nome,
         descricao: descricao,
         contato: contato,
         imagemBase64: imagemBase64,
-        userId: userId,
+        userId: usuarioAtual.uid, // USAR O ID DO USUÁRIO ATUAL
       );
 
-      await novoPetRef.set(pet.toRTDB());
+      final docRef = await _firestore
+          .collection('pets')
+          .add(pet.toFirestore());
 
-      // Também salvar no Firestore para consistência
-      await _firestore.collection('pets').doc(petId).set(pet.toFirestore());
+      // Adicionar à lista local com o ID gerado
+      _pets.insert(0, pet.copyWith(id: docRef.id));
 
-      _pets.add(pet);
       _clearImage();
       _setLoading(false);
+      notifyListeners();
       
       return true;
     } catch (e) {
       _error = 'Erro ao cadastrar pet: $e';
       _setLoading(false);
+      notifyListeners();
       return false;
     }
   }
 
-  // Editar pet
+  // Editar pet (VERIFICANDO SE É DO USUÁRIO)
   Future<bool> editarPet({
     required String petId,
     required String nome,
@@ -130,31 +139,38 @@ class PetController with ChangeNotifier {
       _setLoading(true);
       _error = null;
 
+      final usuarioAtual = _auth.currentUser;
+      if (usuarioAtual == null) {
+        _error = 'Usuário não autenticado';
+        _setLoading(false);
+        return false;
+      }
+
+      // Verificar se o pet pertence ao usuário
+      final petIndex = _pets.indexWhere((pet) => pet.id == petId);
+      if (petIndex == -1) {
+        _error = 'Pet não encontrado';
+        _setLoading(false);
+        notifyListeners();
+        return false;
+      }
+
+      final petAtual = _pets[petIndex];
+      if (petAtual.userId != usuarioAtual.uid) {
+        _error = 'Você só pode editar seus próprios pets';
+        _setLoading(false);
+        notifyListeners();
+        return false;
+      }
+
       String? imagemBase64;
       if (novaImagem != null) {
         final bytes = await novaImagem.readAsBytes();
         imagemBase64 = base64Encode(bytes);
       }
 
-      // Buscar pet atual para manter a imagem existente se não houver nova
-      final petIndex = _pets.indexWhere((pet) => pet.id == petId);
-      if (petIndex == -1) {
-        _error = 'Pet não encontrado';
-        _setLoading(false);
-        return false;
-      }
-
-      final petAtual = _pets[petIndex];
       final imagemParaSalvar = imagemBase64 ?? petAtual.imagemBase64;
 
-      await _database.child('pets').child(petId).update({
-        'nome': nome,
-        'descricao': descricao,
-        'contato': contato,
-        'imagemBase64': imagemParaSalvar ?? '',
-      });
-
-      // Atualizar no Firestore também
       await _firestore.collection('pets').doc(petId).update({
         'nome': nome,
         'descricao': descricao,
@@ -172,30 +188,48 @@ class PetController with ChangeNotifier {
       );
 
       _setLoading(false);
+      notifyListeners();
       return true;
     } catch (e) {
       _error = 'Erro ao editar pet: $e';
       _setLoading(false);
+      notifyListeners();
       return false;
     }
   }
 
-  // Deletar pet
+  // Deletar pet (VERIFICANDO SE É DO USUÁRIO)
   Future<bool> deletarPet(String petId) async {
     try {
       _setLoading(true);
       _error = null;
 
-      await _database.child('pets').child(petId).remove();
+      final usuarioAtual = _auth.currentUser;
+      if (usuarioAtual == null) {
+        _error = 'Usuário não autenticado';
+        _setLoading(false);
+        return false;
+      }
+
+      // Verificar se o pet pertence ao usuário
+      final pet = _pets.firstWhere((p) => p.id == petId);
+      if (pet.userId != usuarioAtual.uid) {
+        _error = 'Você só pode deletar seus próprios pets';
+        _setLoading(false);
+        return false;
+      }
+
       await _firestore.collection('pets').doc(petId).delete();
 
       _pets.removeWhere((pet) => pet.id == petId);
       _setLoading(false);
+      notifyListeners();
       
       return true;
     } catch (e) {
       _error = 'Erro ao deletar pet: $e';
       _setLoading(false);
+      notifyListeners();
       return false;
     }
   }
@@ -206,6 +240,19 @@ class PetController with ChangeNotifier {
       return _pets.firstWhere((pet) => pet.id == petId);
     } catch (e) {
       return null;
+    }
+  }
+
+  // Verificar se o usuário é dono do pet
+  bool isPetDoUsuario(String petId) {
+    final usuarioAtual = _auth.currentUser;
+    if (usuarioAtual == null) return false;
+    
+    try {
+      final pet = _pets.firstWhere((p) => p.id == petId);
+      return pet.userId == usuarioAtual.uid;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -270,10 +317,11 @@ class PetController with ChangeNotifier {
   }
 
   // Buscar pets do usuário atual
-  List<PetModel> getPetsDoUsuario(String? userId) {
-    if (userId == null) return [];
+  List<PetModel> getPetsDoUsuario() {
+    final usuarioAtual = _auth.currentUser;
+    if (usuarioAtual == null) return [];
     
-    return _pets.where((pet) => pet.userId == userId).toList();
+    return _pets.where((pet) => pet.userId == usuarioAtual.uid).toList();
   }
 
   // Controlar estado de loading

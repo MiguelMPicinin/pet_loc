@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:pet_loc/views/Loja/cadastro_produto_view.dart';
 import 'package:pet_loc/views/Loja/loja_view.dart';
-import 'package:pet_loc/views/blog-chat/blog_view.dart';
-import 'package:pet_loc/views/blog-chat/chat_view.dart';
+import 'package:pet_loc/views/Loja/produto_CRUD_view.dart';
+import 'package:pet_loc/views/blog-chat/community_view.dart';
 import 'package:pet_loc/views/cadastro/cadastro_view.dart';
 import 'package:pet_loc/views/cadastro/login_view.dart';
 import 'package:pet_loc/views/desaparecidos/desaparecido_cadastro_view.dart';
@@ -26,8 +27,11 @@ class AppRoutes {
   static const String loja = '/loja';
   static const String lojaComprar = '/loja-comprar';
   static const String localizacaoPet = '/localizacao-pet';
-  static const String blog = '/blog';
-  static const String chat = '/chat';
+  static const String community = '/community';
+  
+  // Novas rotas para produtos
+  static const String cadastroProduto = '/cadastro-produto';
+  static const String produtoCrud = '/produto-crud';
 
   static Map<String, WidgetBuilder> getRoutes() {
     return {
@@ -52,8 +56,11 @@ class AppRoutes {
         return ComprarLojaScreen(produto: produto);
       },
       localizacaoPet: (context) => LocalizacaoPetView(),
-      blog: (context) => const BlogView(),
-      chat: (context) => const ChatView(),
+      community: (context) => const CommunityView(),
+      
+      // Novas rotas para produtos
+      cadastroProduto: (context) => const CadastroProdutoScreen(),
+      produtoCrud: (context) => const ProdutoCrudScreen(),
     };
   }
 }

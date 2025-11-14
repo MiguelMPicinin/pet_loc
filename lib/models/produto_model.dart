@@ -13,6 +13,7 @@ class ProdutoModel {
   final DateTime? atualizadoEm;
   final int? estoque;
   final bool ativo;
+  final String? categoria; // ADICIONE ESTE CAMPO
 
   ProdutoModel({
     this.id,
@@ -27,6 +28,7 @@ class ProdutoModel {
     this.atualizadoEm,
     this.estoque,
     this.ativo = true,
+    this.categoria, // ADICIONE ESTE PARÂMETRO
   });
 
   factory ProdutoModel.fromFirestore(DocumentSnapshot doc) {
@@ -44,6 +46,7 @@ class ProdutoModel {
       atualizadoEm: data['atualizadoEm']?.toDate(),
       estoque: data['estoque'],
       ativo: data['ativo'] ?? true,
+      categoria: data['categoria'] ?? 'Geral', // ADICIONE ESTA LINHA
     );
   }
 
@@ -60,6 +63,7 @@ class ProdutoModel {
       'atualizadoEm': FieldValue.serverTimestamp(),
       'estoque': estoque,
       'ativo': ativo,
+      'categoria': categoria ?? 'Geral', // ADICIONE ESTA LINHA
     };
   }
 
@@ -88,6 +92,7 @@ class ProdutoModel {
     DateTime? atualizadoEm,
     int? estoque,
     bool? ativo,
+    String? categoria, // ADICIONE ESTE PARÂMETRO
   }) {
     return ProdutoModel(
       id: id ?? this.id,
@@ -102,6 +107,7 @@ class ProdutoModel {
       atualizadoEm: atualizadoEm ?? this.atualizadoEm,
       estoque: estoque ?? this.estoque,
       ativo: ativo ?? this.ativo,
+      categoria: categoria ?? this.categoria, // ADICIONE ESTA LINHA
     );
   }
 }

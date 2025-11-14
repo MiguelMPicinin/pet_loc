@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../services/app_routes.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:pet_loc/services/app_routes.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,6 +15,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _senhaController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isLoading = false;
 
   Future<void> _fazerLogin() async {
@@ -31,13 +34,16 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await _auth.signInWithEmailAndPassword(
+      final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _senhaController.text.trim(),
       );
+
+      // Verificar se o usuário existe no Firestore, se não, criar
+      await _verificarOuCriarUsuario(userCredential.user!);
       
-      // O AuthWrapper vai redirecionar automaticamente para a home
-      // Não precisa de navegação manual aqui
+      // Navegar para home
+      Navigator.pushReplacementNamed(context, AppRoutes.home);
       
     } on FirebaseAuthException catch (e) {
       String errorMessage;
@@ -54,8 +60,85 @@ class _LoginScreenState extends State<LoginScreen> {
         case 'user-disabled':
           errorMessage = "Esta conta foi desativada.";
           break;
+        case 'too-many-requests':
+          errorMessage = "Muitas tentativas. Tente novamente mais tarde.";
+          break;
         default:
           errorMessage = "Erro ao fazer login: ${e.message}";
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Erro inesperado: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+
+  Future<void> _verificarOuCriarUsuario(User user) async {
+    final userDoc = await _firestore.collection('users').doc(user.uid).get();
+    
+    if (!userDoc.exists) {
+      // Criar usuário no Firestore se não existir
+      await _firestore.collection('users').doc(user.uid).set({
+        'id': user.uid,
+        'nome': user.displayName ?? 'Usuário',
+        'email': user.email!,
+        'fotoUrl': user.photoURL,
+        'criadoEm': FieldValue.serverTimestamp(),
+        'atualizadoEm': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  Future<void> _recuperarSenha() async {
+    if (_emailController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Por favor, digite seu email"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await _auth.sendPasswordResetEmail(email: _emailController.text.trim());
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Email de recuperação enviado!"),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      String errorMessage;
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = "Usuário não encontrado.";
+          break;
+        case 'invalid-email':
+          errorMessage = "Email inválido.";
+          break;
+        default:
+          errorMessage = "Erro ao enviar email: ${e.message}";
       }
       
       ScaffoldMessenger.of(context).showSnackBar(
@@ -167,47 +250,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(color: Colors.white),
               ),
             ),
-            const SizedBox(height: 20),
-            // Botões de login social (opcionais)
-            ElevatedButton.icon(
-              onPressed: _isLoading
-                  ? null
-                  : () {
-                      // TODO: Implementar login com Google
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Login com Google em desenvolvimento"),
-                          backgroundColor: Colors.blue,
-                        ),
-                      );
-                    },
-              icon: const Icon(Icons.login, color: Colors.white),
-              label: const Text("Entrar com Google"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                padding:
-                    const EdgeInsets.symmetric(vertical: 12, horizontal: 30),
-              ),
-            ),
             const SizedBox(height: 10),
-            ElevatedButton.icon(
-              onPressed: _isLoading
-                  ? null
-                  : () {
-                      // TODO: Implementar login com Facebook
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Login com Facebook em desenvolvimento"),
-                          backgroundColor: Colors.blue,
-                        ),
-                      );
-                    },
-              icon: const Icon(Icons.facebook, color: Colors.white),
-              label: const Text("Entrar com Facebook"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1877F2),
-                padding:
-                    const EdgeInsets.symmetric(vertical: 12, horizontal: 30),
+            TextButton(
+              onPressed: _isLoading ? null : _recuperarSenha,
+              child: const Text(
+                "Esqueci minha senha",
+                style: TextStyle(color: Colors.white70),
               ),
             ),
           ],

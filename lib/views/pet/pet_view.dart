@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:pet_loc/controller/petController.dart';
 import 'package:pet_loc/models/pet_model.dart';
 import 'package:pet_loc/services/app_routes.dart';
@@ -14,51 +15,22 @@ class PetView extends StatefulWidget {
 
 class _PetViewState extends State<PetView> {
   final TextEditingController _searchController = TextEditingController();
-  final PetController _controller = PetController();
   String _searchQuery = '';
-  bool _isLoading = true;
-  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadPets();
-  }
-
-  Future<void> _loadPets() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    await _controller.refresh();
-    
-    setState(() {
-      _isLoading = false;
-      _error = _controller.error;
-    });
-  }
-
-  Future<void> _refreshPets() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    await _controller.refresh();
-    
-    setState(() {
-      _isLoading = false;
-      _error = _controller.error;
+    // Forçar recarregamento dos pets quando a tela iniciar
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final controller = Provider.of<PetController>(context, listen: false);
+      if (controller.pets.isEmpty) {
+        controller.refresh();
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final pets = _searchQuery.isEmpty
-        ? _controller.pets
-        : _controller.buscarPets(_searchQuery);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -73,94 +45,37 @@ class _PetViewState extends State<PetView> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: _refreshPets,
+            onPressed: () {
+              final controller = Provider.of<PetController>(context, listen: false);
+              controller.refresh();
+            },
           ),
         ],
       ),
-      body: _isLoading && _controller.pets.isEmpty
-          ? const Center(
+      body: Consumer<PetController>(
+        builder: (context, controller, child) {
+          if (controller.isLoading && controller.pets.isEmpty) {
+            return const Center(
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1A73E8)),
               ),
-            )
-          : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error, size: 64, color: Colors.red),
-                      const SizedBox(height: 16),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Text(
-                          'Erro: $_error',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _refreshPets,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1A73E8),
-                        ),
-                        child: const Text('Tentar novamente'),
-                      ),
-                    ],
-                  ),
-                )
-              : pets.isEmpty
-                  ? Column(
-                      children: [
-                        _buildSearchBar(),
-                        Expanded(
-                          child: Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.pets,
-                                  size: 80,
-                                  color: Colors.grey[400],
-                                ),
-                                const SizedBox(height: 16),
-                                const Text(
-                                  'Nenhum Pet Cadastrado',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.grey,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  'Toque no + para adicionar seu primeiro pet!',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        _buildSearchBar(),
-                        Expanded(
-                          child: ListView.builder(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: pets.length,
-                            itemBuilder: (context, index) {
-                              return _buildPetCard(pets[index], context);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
+            );
+          }
+
+          final pets = _searchQuery.isEmpty
+              ? controller.pets // Já são apenas os pets do usuário
+              : controller.buscarPets(_searchQuery);
+
+          return Column(
+            children: [
+              _buildSearchBar(),
+              Expanded(
+                child: _buildPetList(controller, pets),
+              ),
+            ],
+          );
+        },
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.pushNamed(context, AppRoutes.cadastroPet);
@@ -189,6 +104,85 @@ class _PetViewState extends State<PetView> {
           setState(() {
             _searchQuery = value;
           });
+        },
+      ),
+    );
+  }
+
+  Widget _buildPetList(PetController controller, List<PetModel> pets) {
+    if (controller.error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                'Erro: ${controller.error}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                controller.refresh();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1A73E8),
+              ),
+              child: const Text('Tentar novamente'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (pets.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.pets,
+              size: 80,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Nenhum Pet Cadastrado',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Toque no + para adicionar seu primeiro pet!',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        await Provider.of<PetController>(context, listen: false).refresh();
+      },
+      color: const Color(0xFF1A73E8),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: pets.length,
+        itemBuilder: (context, index) {
+          return _buildPetCard(pets[index], context);
         },
       ),
     );
@@ -366,7 +360,6 @@ class _PetViewState extends State<PetView> {
   }
 
   void _generateQRCode(PetModel pet) {
-    // TODO: Implementar geração de QR Code real com pacote qr_flutter
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('QR Code gerado para ${pet.nome}'),
@@ -379,7 +372,6 @@ class _PetViewState extends State<PetView> {
     try {
       return base64Decode(base64String);
     } catch (e) {
-      // Retorna uma imagem placeholder em caso de erro
       return base64Decode(
         'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
       );
@@ -389,7 +381,6 @@ class _PetViewState extends State<PetView> {
   @override
   void dispose() {
     _searchController.dispose();
-    _controller.dispose();
     super.dispose();
   }
 }

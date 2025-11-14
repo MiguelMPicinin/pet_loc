@@ -52,7 +52,7 @@ class _CriarDesaparecidoScreenState extends State<CriarDesaparecidoScreen> {
         Navigator.pushReplacementNamed(context, AppRoutes.loja);
         break;
       case 4:
-        Navigator.pushReplacementNamed(context, AppRoutes.blog);
+        Navigator.pushReplacementNamed(context, AppRoutes.community);
         break;
     }
   }

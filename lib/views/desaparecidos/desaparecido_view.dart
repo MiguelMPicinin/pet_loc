@@ -1,9 +1,11 @@
 import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
-import 'package:pet_loc/controller/desaparecidoController.dart';
-import 'package:pet_loc/services/app_routes.dart';
 import 'dart:typed_data';
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pet_loc/controller/desaparecidoController.dart';
+import 'package:pet_loc/models/desaparecidos_model.dart';
+import 'package:pet_loc/services/app_routes.dart';
+import 'package:provider/provider.dart';
 
 class DesaparecidoScreen extends StatefulWidget {
   const DesaparecidoScreen({Key? key}) : super(key: key);
@@ -13,64 +15,19 @@ class DesaparecidoScreen extends StatefulWidget {
 }
 
 class _DesaparecidoScreenState extends State<DesaparecidoScreen> {
-  final DesaparecidosController _controller = DesaparecidosController();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  List<Map<String, dynamic>> _desaparecidos = [];
   String? _currentUserId;
+  String _filtroSelecionado = 'Todos';
 
   @override
   void initState() {
     super.initState();
-    _loadDesaparecidos();
     _getCurrentUser();
   }
 
   Future<void> _getCurrentUser() async {
     setState(() {
-      _currentUserId = 'user123';
+      _currentUserId = 'user123'; // Substitua pela lógica real de autenticação
     });
-  }
-
-  Future<void> _loadDesaparecidos() async {
-    final snapshot = await _firestore
-        .collection('desaparecidos')
-        .orderBy('criadoEm', descending: true)
-        .get();
-    
-    setState(() {
-      _desaparecidos = snapshot.docs.map((doc) {
-        final data = doc.data();
-        return {
-          'id': doc.id,
-          'nome': data['nome'] ?? '',
-          'descricao': data['descricao'] ?? '',
-          'contato': data['contato'] ?? '',
-          'imagem': data['imagemBase64'] ?? '',
-          'userId': data['userId'] ?? '',
-          'encontrado': data['encontrado'] ?? false,
-          'criadoEm': data['criadoEm'],
-        };
-      }).toList();
-    });
-  }
-
-  Future<void> _deleteDesaparecido(String id) async {
-    await _firestore.collection('desaparecidos').doc(id).delete();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Registro deletado com sucesso')),
-    );
-    _loadDesaparecidos();
-  }
-
-  Future<void> _marcarComoEncontrado(String id) async {
-    await _firestore.collection('desaparecidos').doc(id).update({
-      'encontrado': true,
-      'atualizadoEm': FieldValue.serverTimestamp(),
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Marcado como encontrado!')),
-    );
-    _loadDesaparecidos();
   }
 
   void _onItemTapped(int index) {
@@ -82,14 +39,54 @@ class _DesaparecidoScreenState extends State<DesaparecidoScreen> {
         Navigator.pushReplacementNamed(context, AppRoutes.pets);
         break;
       case 2:
-        // Já está em desaparecidos
         break;
       case 3:
         Navigator.pushReplacementNamed(context, AppRoutes.loja);
         break;
       case 4:
-        Navigator.pushReplacementNamed(context, AppRoutes.blog);
+        Navigator.pushReplacementNamed(context, AppRoutes.community);
         break;
+    }
+  }
+
+  Widget _buildFiltroChip(String filtro) {
+    final bool isSelected = filtro == _filtroSelecionado;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _filtroSelecionado = filtro;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        margin: const EdgeInsets.only(right: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF1A73E8) : Colors.grey[200],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF1A73E8) : (Colors.grey[300] ?? Colors.grey),
+          ),
+        ),
+        child: Text(
+          filtro,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.grey[700],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<DesaparecidoModel> _filtrarDesaparecidos(List<DesaparecidoModel> lista) {
+    switch (_filtroSelecionado) {
+      case 'Desaparecidos':
+        return lista.where((d) => !d.encontrado).toList();
+      case 'Encontrados':
+        return lista.where((d) => d.encontrado).toList();
+      case 'Todos':
+      default:
+        return lista;
     }
   }
 
@@ -121,61 +118,124 @@ class _DesaparecidoScreenState extends State<DesaparecidoScreen> {
         },
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        child: _desaparecidos.isEmpty
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.pets, size: 80, color: Colors.grey[400]),
-                    const SizedBox(height: 16),
-                    Text(
-                      "Nenhum pet desaparecido encontrado",
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
+      body: Consumer<DesaparecidosController>(
+        builder: (context, controller, child) {
+          return StreamBuilder<List<DesaparecidoModel>>(
+            stream: controller.desaparecidosStream,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Erro ao carregar desaparecidos',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[600],
+                        ),
                       ),
+                    ],
+                  ),
+                );
+              }
+
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1A73E8)),
+                  ),
+                );
+              }
+
+              final desaparecidos = snapshot.data ?? [];
+              final desaparecidosFiltrados = _filtrarDesaparecidos(desaparecidos);
+
+              return Column(
+                children: [
+                  // Filtros
+                  Container(
+                    height: 60,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        _buildFiltroChip('Todos'),
+                        _buildFiltroChip('Desaparecidos'),
+                        _buildFiltroChip('Encontrados'),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Toque no + para adicionar um registro",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            : ListView.builder(
-                itemCount: _desaparecidos.length,
-                itemBuilder: (context, index) {
-                  final d = _desaparecidos[index];
-                  return _buildDesaparecidoCard(
-                    d['id'],
-                    d['imagem'],
-                    d['nome'],
-                    d['descricao'],
-                    d['contato'],
-                    d['userId'],
-                    d['encontrado'],
-                  );
-                },
-              ),
+                  ),
+                  Expanded(
+                    child: desaparecidosFiltrados.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.pets, size: 80, color: Colors.grey[400]),
+                                const SizedBox(height: 16),
+                                Text(
+                                  _filtroSelecionado == 'Desaparecidos'
+                                      ? "Nenhum pet desaparecido encontrado"
+                                      : _filtroSelecionado == 'Encontrados'
+                                          ? "Nenhum pet encontrado"
+                                          : "Nenhum pet desaparecido cadastrado",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.grey[600],
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  "Toque no + para adicionar um registro",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: desaparecidosFiltrados.length,
+                            itemBuilder: (context, index) {
+                              final d = desaparecidosFiltrados[index];
+                              return _buildDesaparecidoCard(
+                                context,
+                                controller,
+                                d.id!,
+                                d.imagemBase64,
+                                d.nome,
+                                d.descricao,
+                                d.contato,
+                                d.userId,
+                                d.encontrado,
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              );
+            },
+          );
+        },
       ),
       bottomNavigationBar: _buildBottomNavigationBar(2),
     );
   }
 
   Widget _buildDesaparecidoCard(
+    BuildContext context,
+    DesaparecidosController controller,
     String id,
     String? imagemBase64,
     String nome,
     String descricao,
     String contato,
-    String userId,
+    String? userId,
     bool encontrado,
   ) {
     bool isOwner = userId == _currentUserId;
@@ -253,9 +313,9 @@ class _DesaparecidoScreenState extends State<DesaparecidoScreen> {
                             },
                           );
                         } else if (value == 'delete') {
-                          _showDeleteConfirmation(id);
+                          _showDeleteConfirmation(context, controller, id);
                         } else if (value == 'found') {
-                          _marcarComoEncontrado(id);
+                          controller.marcarComoEncontrado(id);
                         }
                       },
                       itemBuilder: (BuildContext context) => [
@@ -434,9 +494,9 @@ class _DesaparecidoScreenState extends State<DesaparecidoScreen> {
           label: 'Loja',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.article_outlined),
-          activeIcon: Icon(Icons.article),
-          label: 'Blog',
+          icon: Icon(Icons.people_outlined),
+          activeIcon: Icon(Icons.people),
+          label: 'Comunidade',
         ),
       ],
       currentIndex: currentIndex,
@@ -449,7 +509,7 @@ class _DesaparecidoScreenState extends State<DesaparecidoScreen> {
     );
   }
 
-  void _showDeleteConfirmation(String id) {
+  void _showDeleteConfirmation(BuildContext context, DesaparecidosController controller, String id) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -463,7 +523,7 @@ class _DesaparecidoScreenState extends State<DesaparecidoScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(ctx).pop();
-              _deleteDesaparecido(id);
+              controller.deletarDesaparecido(id);
             },
             child: const Text(
               'Deletar',

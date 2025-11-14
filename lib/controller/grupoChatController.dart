@@ -1,8 +1,9 @@
+// group_chat_controller.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class ChatController with ChangeNotifier {
+class GroupChatController with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -232,189 +233,6 @@ class ChatController with ChangeNotifier {
     }
   }
 
-  // Carregar mensagens de um grupo
-  Future<void> carregarMensagens(String grupoId) async {
-    try {
-      _setLoading(true);
-      _grupoSelecionadoId = grupoId;
-
-      final snapshot = await _firestore
-          .collection('chat_grupos')
-          .doc(grupoId)
-          .collection('mensagens')
-          .orderBy('enviadoEm', descending: false)
-          .get();
-
-      _mensagens = snapshot.docs.map((doc) {
-        final data = doc.data();
-        return {
-          'id': doc.id,
-          'texto': data['texto'] ?? '',
-          'remetenteId': data['remetenteId'] ?? '',
-          'remetenteNome': data['remetenteNome'] ?? '',
-          'enviadoEm': data['enviadoEm'],
-          'lida': data['lida'] ?? false,
-        };
-      }).toList();
-
-      _setLoading(false);
-    } catch (e) {
-      _error = 'Erro ao carregar mensagens: $e';
-      _setLoading(false);
-      notifyListeners();
-    }
-  }
-
-  // Deletar mensagem
-  Future<bool> deletarMensagem({
-    required String grupoId,
-    required String mensagemId,
-  }) async {
-    try {
-      final usuarioAtual = _auth.currentUser;
-      if (usuarioAtual == null) {
-        _error = 'Usuário não autenticado';
-        return false;
-      }
-
-      // Verificar se o usuário é o remetente da mensagem
-      final mensagemDoc = await _firestore
-          .collection('chat_grupos')
-          .doc(grupoId)
-          .collection('mensagens')
-          .doc(mensagemId)
-          .get();
-
-      if (!mensagemDoc.exists) {
-        _error = 'Mensagem não encontrada';
-        return false;
-      }
-
-      final mensagem = mensagemDoc.data();
-      if (mensagem?['remetenteId'] != usuarioAtual.uid) {
-        _error = 'Você só pode deletar suas próprias mensagens';
-        return false;
-      }
-
-      await _firestore
-          .collection('chat_grupos')
-          .doc(grupoId)
-          .collection('mensagens')
-          .doc(mensagemId)
-          .delete();
-
-      // Remover da lista local
-      _mensagens.removeWhere((msg) => msg['id'] == mensagemId);
-
-      // Atualizar última mensagem se necessário
-      await _atualizarUltimaMensagem(grupoId);
-
-      return true;
-    } catch (e) {
-      _error = 'Erro ao deletar mensagem: $e';
-      return false;
-    }
-  }
-
-  // Atualizar última mensagem do grupo
-  Future<void> _atualizarUltimaMensagem(String grupoId) async {
-    try {
-      final snapshot = await _firestore
-          .collection('chat_grupos')
-          .doc(grupoId)
-          .collection('mensagens')
-          .orderBy('enviadoEm', descending: true)
-          .limit(1)
-          .get();
-
-      if (snapshot.docs.isNotEmpty) {
-        final ultimaMensagem = snapshot.docs.first.data();
-        await _firestore
-            .collection('chat_grupos')
-            .doc(grupoId)
-            .update({
-              'ultimaMensagem': ultimaMensagem['texto'] ?? '',
-              'ultimaMensagemData': FieldValue.serverTimestamp(),
-            });
-      } else {
-        // Se não há mensagens, limpar última mensagem
-        await _firestore
-            .collection('chat_grupos')
-            .doc(grupoId)
-            .update({
-              'ultimaMensagem': 'Nenhuma mensagem ainda',
-              'ultimaMensagemData': FieldValue.serverTimestamp(),
-            });
-      }
-    } catch (e) {
-      print('Erro ao atualizar última mensagem: $e');
-    }
-  }
-
-  // Deletar grupo
-  Future<bool> deletarGrupo(String grupoId) async {
-    try {
-      _setLoading(true);
-      _error = null;
-
-      final usuarioAtual = _auth.currentUser;
-      if (usuarioAtual == null) {
-        _error = 'Usuário não autenticado';
-        _setLoading(false);
-        return false;
-      }
-
-      // Verificar se o usuário é o criador do grupo
-      final grupo = _grupos.firstWhere((g) => g['id'] == grupoId);
-      if (grupo['criadorId'] != usuarioAtual.uid) {
-        _error = 'Apenas o criador do grupo pode deletá-lo';
-        _setLoading(false);
-        return false;
-      }
-
-      // Deletar todas as mensagens primeiro
-      final mensagensSnapshot = await _firestore
-          .collection('chat_grupos')
-          .doc(grupoId)
-          .collection('mensagens')
-          .get();
-
-      final batch = _firestore.batch();
-      for (final doc in mensagensSnapshot.docs) {
-        batch.delete(doc.reference);
-      }
-      await batch.commit();
-
-      // Deletar o grupo
-      await _firestore.collection('chat_grupos').doc(grupoId).delete();
-
-      // Remover da lista local
-      _grupos.removeWhere((g) => g['id'] == grupoId);
-      if (_grupoSelecionadoId == grupoId) {
-        _grupoSelecionadoId = null;
-        _mensagens.clear();
-      }
-
-      _setLoading(false);
-      return true;
-    } catch (e) {
-      _error = 'Erro ao deletar grupo: $e';
-      _setLoading(false);
-      return false;
-    }
-  }
-
-  // Buscar grupos por nome ou categoria
-  List<Map<String, dynamic>> buscarGrupos(String query) {
-    if (query.isEmpty) return _grupos;
-    
-    return _grupos.where((grupo) {
-      return grupo['nome'].toLowerCase().contains(query.toLowerCase()) ||
-             grupo['descricao'].toLowerCase().contains(query.toLowerCase()) ||
-             grupo['categoria'].toLowerCase().contains(query.toLowerCase());
-    }).toList();
-  }
-
   // Verificar se o usuário é membro de um grupo
   bool isMembroDoGrupo(Map<String, dynamic> grupo) {
     final usuarioAtual = _auth.currentUser;
@@ -446,13 +264,6 @@ class ChatController with ChangeNotifier {
     }
   }
 
-  // Limpar mensagens do grupo atual
-  void limparMensagens() {
-    _mensagens.clear();
-    _grupoSelecionadoId = null;
-    notifyListeners();
-  }
-
   // Controlar estado de loading
   void _setLoading(bool loading) {
     _isLoading = loading;
@@ -463,11 +274,6 @@ class ChatController with ChangeNotifier {
   void clearError() {
     _error = null;
     notifyListeners();
-  }
-
-  // Forçar recarregamento
-  Future<void> refresh() async {
-    await carregarGrupos();
   }
 
   @override

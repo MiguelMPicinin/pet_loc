@@ -32,34 +32,76 @@ class _LojaScreenState extends State<LojaScreen> {
 
   Future<void> _loadProdutos() async {
     try {
+      print('🔍 Carregando produtos do Firestore...');
+      
+      // Carregar SEM ordenação para evitar erro de índice
       final snapshot = await _firestore
           .collection('produtos_loja')
           .where('ativo', isEqualTo: true)
-          .orderBy('criadoEm', descending: true)
           .get();
       
-      setState(() {
-        _produtos = snapshot.docs.map((doc) {
-          final data = doc.data();
-          return {
-            'id': doc.id,
-            'nome': data['nome'] ?? '',
-            'descricao': data['descricao'] ?? '',
-            'preco': data['preco'] ?? '0.00',
-            'contato': data['contato'] ?? '',
-            'imagem': data['imagemBase64'] ?? '',
-            'estoque': data['estoque'] ?? 0,
-            'categoria': data['categoria'] ?? 'Geral',
-          };
-        }).toList();
-        _isLoading = false;
-      });
+      _processarSnapshot(snapshot);
+      
     } catch (e) {
-      print('Erro ao carregar produtos: $e');
+      print('❌ Erro geral ao carregar produtos: $e');
       setState(() {
         _isLoading = false;
       });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao carregar produtos: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
+  }
+
+  void _processarSnapshot(QuerySnapshot snapshot) {
+    print('📊 Snapshot size: ${snapshot.docs.length}');
+    
+    setState(() {
+      _produtos = snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        final produto = {
+          'id': doc.id,
+          'nome': data['nome'] ?? 'Sem nome',
+          'descricao': data['descricao'] ?? 'Sem descrição',
+          'preco': data['preco']?.toString() ?? '0.00',
+          'contato': data['contato'] ?? 'Sem contato',
+          'imagem': data['imagemBase64'] ?? '',
+          'estoque': data['estoque'] ?? 0,
+          'categoria': data['categoria'] ?? 'Geral',
+          'ativo': data['ativo'] ?? false,
+        };
+        print('✅ Produto carregado: ${produto['nome']}');
+        return produto;
+      }).toList();
+      _isLoading = false;
+    });
+
+    _debugProdutos();
+  }
+
+  void _debugProdutos() {
+    print('\n=== 🛍️ DEBUG PRODUTOS ===');
+    print('Total de produtos carregados: ${_produtos.length}');
+    if (_produtos.isEmpty) {
+      print('🚫 NENHUM PRODUTO ENCONTRADO!');
+    } else {
+      for (var i = 0; i < _produtos.length; i++) {
+        final produto = _produtos[i];
+        print('${i + 1}. ${produto['nome']}');
+      }
+    }
+    print('========================\n');
+  }
+
+  Future<void> _refreshProdutos() async {
+    setState(() {
+      _isLoading = true;
+    });
+    await _loadProdutos();
   }
 
   List<Map<String, dynamic>> get _produtosFiltrados {
@@ -102,6 +144,7 @@ class _LojaScreenState extends State<LojaScreen> {
       try {
         imageBytes = base64Decode(produto['imagem']);
       } catch (e) {
+        print('Erro ao decodificar imagem: $e');
         imageBytes = null;
       }
     }
@@ -122,7 +165,6 @@ class _LojaScreenState extends State<LojaScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Imagem do produto
             Stack(
               children: [
                 ClipRRect(
@@ -135,6 +177,9 @@ class _LojaScreenState extends State<LojaScreen> {
                         ? Image.memory(
                             imageBytes,
                             fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(Icons.error, color: Colors.red);
+                            },
                           )
                         : const Icon(
                             Icons.pets,
@@ -166,7 +211,6 @@ class _LojaScreenState extends State<LojaScreen> {
               ],
             ),
 
-            // Informações do produto
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -214,6 +258,7 @@ class _LojaScreenState extends State<LojaScreen> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: semEstoque ? null : () {
+                        // Navega para a tela de compra
                         Navigator.pushNamed(
                           context,
                           AppRoutes.lojaComprar,
@@ -246,6 +291,18 @@ class _LojaScreenState extends State<LojaScreen> {
     );
   }
 
+  Widget _buildFloatingActionButton() {
+    return FloatingActionButton(
+      onPressed: () async {
+        await Navigator.pushNamed(context, AppRoutes.cadastroProduto);
+        _refreshProdutos();
+      },
+      backgroundColor: const Color(0xFF1A73E8),
+      foregroundColor: Colors.white,
+      child: const Icon(Icons.add),
+    );
+  }
+
   void _onItemTapped(int index) {
     switch (index) {
       case 0:
@@ -258,10 +315,9 @@ class _LojaScreenState extends State<LojaScreen> {
         Navigator.pushReplacementNamed(context, AppRoutes.desaparecidos);
         break;
       case 3:
-        // Já está na loja
         break;
       case 4:
-        Navigator.pushReplacementNamed(context, AppRoutes.blog);
+        Navigator.pushReplacementNamed(context, AppRoutes.community);
         break;
     }
   }
@@ -294,16 +350,27 @@ class _LojaScreenState extends State<LojaScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // Implementar busca posteriormente
+            icon: const Icon(Icons.inventory_2),
+            onPressed: () async {
+              await Navigator.pushNamed(context, AppRoutes.produtoCrud);
+              _refreshProdutos();
             },
+            tooltip: 'Meus Produtos',
+          ),
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {},
+            tooltip: 'Pesquisar',
           ),
           IconButton(
             icon: const Icon(Icons.notifications_none),
-            onPressed: () {
-              // Implementar notificações posteriormente
-            },
+            onPressed: () {},
+            tooltip: 'Notificações',
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshProdutos,
+            tooltip: 'Recarregar',
           ),
         ],
       ),
@@ -313,57 +380,59 @@ class _LojaScreenState extends State<LojaScreen> {
                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1A73E8)),
               ),
             )
-          : Column(
-              children: [
-                // Categorias
-                Container(
-                  height: 60,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _categorias.length,
-                    itemBuilder: (context, index) {
-                      return _buildCategoriaChip(_categorias[index]);
-                    },
-                  ),
-                ),
-
-                // Contador de produtos
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      Text(
-                        '${_produtosFiltrados.length} produtos encontrados',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // Grid de produtos
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: GridView.builder(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 0.75,
-                      ),
-                      itemCount: _produtosFiltrados.length,
-                      itemBuilder: (context, index) => _buildProductCard(_produtosFiltrados[index]),
+          : RefreshIndicator(
+              onRefresh: _refreshProdutos,
+              child: Column(
+                children: [
+                  Container(
+                    height: 60,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _categorias.length,
+                      itemBuilder: (context, index) {
+                        return _buildCategoriaChip(_categorias[index]);
+                      },
                     ),
                   ),
-                ),
-              ],
+
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Text(
+                          '${_produtosFiltrados.length} produtos encontrados',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: GridView.builder(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 0.75,
+                        ),
+                        itemCount: _produtosFiltrados.length,
+                        itemBuilder: (context, index) => _buildProductCard(_produtosFiltrados[index]),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
       bottomNavigationBar: _buildBottomNavigationBar(3),
+      floatingActionButton: _buildFloatingActionButton(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
@@ -391,9 +460,9 @@ class _LojaScreenState extends State<LojaScreen> {
           label: 'Loja',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.article_outlined),
-          activeIcon: Icon(Icons.article),
-          label: 'Blog',
+          icon: Icon(Icons.people_outlined),
+          activeIcon: Icon(Icons.people),
+          label: 'Comunidade',
         ),
       ],
       currentIndex: currentIndex,

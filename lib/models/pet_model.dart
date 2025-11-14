@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_database/firebase_database.dart';
 
 class PetModel {
   final String? id;
@@ -7,7 +6,7 @@ class PetModel {
   final String descricao;
   final String contato;
   final String? imagemBase64;
-  final String? userId;
+  final String userId; // AGORA É OBRIGATÓRIO
   final DateTime? criadoEm;
   final DateTime? atualizadoEm;
 
@@ -17,20 +16,10 @@ class PetModel {
     required this.descricao,
     required this.contato,
     this.imagemBase64,
-    this.userId,
+    required this.userId, // AGORA É OBRIGATÓRIO
     this.criadoEm,
     this.atualizadoEm,
   });
-
-  factory PetModel.fromRTDB(Map<dynamic, dynamic> data, String id) {
-    return PetModel(
-      id: id,
-      nome: data['nome'] ?? '',
-      descricao: data['descricao'] ?? '',
-      contato: data['contato'] ?? '',
-      imagemBase64: data['imagemBase64'],
-    );
-  }
 
   factory PetModel.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
@@ -40,20 +29,10 @@ class PetModel {
       descricao: data['descricao'] ?? '',
       contato: data['contato'] ?? '',
       imagemBase64: data['imagemBase64'],
-      userId: data['userId'],
+      userId: data['userId'] ?? '', // AGORA É OBRIGATÓRIO
       criadoEm: data['criadoEm']?.toDate(),
       atualizadoEm: data['atualizadoEm']?.toDate(),
     );
-  }
-
-  Map<String, dynamic> toRTDB() {
-    return {
-      'nome': nome,
-      'descricao': descricao,
-      'contato': contato,
-      'imagemBase64': imagemBase64 ?? '',
-      'criadoEm': ServerValue.timestamp,
-    };
   }
 
   Map<String, dynamic> toFirestore() {
@@ -62,7 +41,7 @@ class PetModel {
       'descricao': descricao,
       'contato': contato,
       'imagemBase64': imagemBase64 ?? '',
-      'userId': userId,
+      'userId': userId, // SEMPRE SALVAR O USER ID
       'criadoEm': FieldValue.serverTimestamp(),
       'atualizadoEm': FieldValue.serverTimestamp(),
     };
@@ -84,7 +63,7 @@ class PetModel {
       descricao: descricao ?? this.descricao,
       contato: contato ?? this.contato,
       imagemBase64: imagemBase64 ?? this.imagemBase64,
-      userId: userId ?? this.userId,
+      userId: userId ?? this.userId, // INCLUIR USER ID NO COPY
       criadoEm: criadoEm ?? this.criadoEm,
       atualizadoEm: atualizadoEm ?? this.atualizadoEm,
     );
