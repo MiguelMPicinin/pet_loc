@@ -17,6 +17,13 @@ class _CadastroProdutoScreenState extends State<CadastroProdutoScreen> {
   final _contatoController = TextEditingController();
   final _estoqueController = TextEditingController();
 
+  // Limites de caracteres
+  static const int _limiteNome = 30;
+  static const int _limiteDescricao = 200;
+  static const int _limitePreco = 7;
+  static const int _limiteContato = 15;
+  static const int _limiteEstoque = 5;
+
   final List<String> _categorias = [
     'Ração',
     'Brinquedos',
@@ -31,7 +38,6 @@ class _CadastroProdutoScreenState extends State<CadastroProdutoScreen> {
   @override
   void initState() {
     super.initState();
-    // Carregar dados do usuário se necessário
   }
 
   Future<void> _cadastrarProduto(LojaController controller) async {
@@ -43,7 +49,7 @@ class _CadastroProdutoScreenState extends State<CadastroProdutoScreen> {
       preco: _precoController.text.trim(),
       contato: _contatoController.text.trim(),
       estoque: _estoqueController.text.isEmpty ? null : int.tryParse(_estoqueController.text),
-      categoria: _categoriaSelecionada, // PASSANDO A CATEGORIA SELECIONADA
+      categoria: _categoriaSelecionada,
     );
 
     if (success) {
@@ -165,17 +171,23 @@ class _CadastroProdutoScreenState extends State<CadastroProdutoScreen> {
                   // Nome do produto
                   TextFormField(
                     controller: _nomeController,
-                    decoration: const InputDecoration(
+                    maxLength: _limiteNome,
+                    decoration: InputDecoration(
                       labelText: 'Nome do Produto*',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.shopping_bag),
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.shopping_bag),
+                      counterText: '${_nomeController.text.length}/$_limiteNome',
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Digite o nome do produto';
                       }
+                      if (value.length > _limiteNome) {
+                        return 'Nome muito longo (máx. $_limiteNome caracteres)';
+                      }
                       return null;
                     },
+                    onChanged: (_) => setState(() {}),
                   ),
 
                   const SizedBox(height: 16),
@@ -183,18 +195,24 @@ class _CadastroProdutoScreenState extends State<CadastroProdutoScreen> {
                   // Descrição
                   TextFormField(
                     controller: _descricaoController,
+                    maxLength: _limiteDescricao,
                     maxLines: 3,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Descrição*',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.description),
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.description),
+                      counterText: '${_descricaoController.text.length}/$_limiteDescricao',
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Digite a descrição do produto';
                       }
+                      if (value.length > _limiteDescricao) {
+                        return 'Descrição muito longa (máx. $_limiteDescricao caracteres)';
+                      }
                       return null;
                     },
+                    onChanged: (_) => setState(() {}),
                   ),
 
                   const SizedBox(height: 16),
@@ -202,11 +220,13 @@ class _CadastroProdutoScreenState extends State<CadastroProdutoScreen> {
                   // Preço
                   TextFormField(
                     controller: _precoController,
+                    maxLength: _limitePreco,
                     keyboardType: TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Preço* (ex: 29.90)',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.attach_money),
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.attach_money),
+                      counterText: '${_precoController.text.length}/$_limitePreco',
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -216,8 +236,12 @@ class _CadastroProdutoScreenState extends State<CadastroProdutoScreen> {
                       if (preco == null) {
                         return 'Digite um preço válido';
                       }
+                      if (value.length > _limitePreco) {
+                        return 'Preço muito longo (máx. $_limitePreco caracteres)';
+                      }
                       return null;
                     },
+                    onChanged: (_) => setState(() {}),
                   ),
 
                   const SizedBox(height: 16),
@@ -225,17 +249,23 @@ class _CadastroProdutoScreenState extends State<CadastroProdutoScreen> {
                   // Contato
                   TextFormField(
                     controller: _contatoController,
-                    decoration: const InputDecoration(
+                    maxLength: _limiteContato,
+                    decoration: InputDecoration(
                       labelText: 'Contato* (WhatsApp, email, etc.)',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.contact_phone),
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.contact_phone),
+                      counterText: '${_contatoController.text.length}/$_limiteContato',
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Digite um contato';
                       }
+                      if (value.length > _limiteContato) {
+                        return 'Contato muito longo (máx. $_limiteContato caracteres)';
+                      }
                       return null;
                     },
+                    onChanged: (_) => setState(() {}),
                   ),
 
                   const SizedBox(height: 16),
@@ -243,17 +273,20 @@ class _CadastroProdutoScreenState extends State<CadastroProdutoScreen> {
                   // Estoque
                   TextFormField(
                     controller: _estoqueController,
+                    maxLength: _limiteEstoque,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Estoque (opcional)',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.inventory),
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.inventory),
+                      counterText: '${_estoqueController.text.length}/$_limiteEstoque',
                     ),
+                    onChanged: (_) => setState(() {}),
                   ),
 
                   const SizedBox(height: 16),
 
-                  // Categoria - AGORA É OBRIGATÓRIO
+                  // Categoria
                   DropdownButtonFormField<String>(
                     value: _categoriaSelecionada,
                     decoration: const InputDecoration(
@@ -282,6 +315,11 @@ class _CadastroProdutoScreenState extends State<CadastroProdutoScreen> {
 
                   const SizedBox(height: 30),
 
+                  // Informações sobre limites
+                  _buildLimitesInfo(),
+
+                  const SizedBox(height: 20),
+
                   // Botão de cadastrar
                   SizedBox(
                     width: double.infinity,
@@ -307,6 +345,45 @@ class _CadastroProdutoScreenState extends State<CadastroProdutoScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildLimitesInfo() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A73E8).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '📋 Limites de Caracteres',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: Color(0xFF1A73E8),
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildInfoItem('Nome: $_limiteNome caracteres'),
+          _buildInfoItem('Descrição: $_limiteDescricao caracteres'),
+          _buildInfoItem('Preço: $_limitePreco caracteres'),
+          _buildInfoItem('Contato: $_limiteContato caracteres'),
+          _buildInfoItem('Estoque: $_limiteEstoque caracteres'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 14),
       ),
     );
   }

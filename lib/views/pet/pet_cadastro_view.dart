@@ -16,6 +16,11 @@ class _PetCadastroViewState extends State<PetCadastroView> {
   final TextEditingController _descricaoController = TextEditingController();
   final TextEditingController _contatoController = TextEditingController();
 
+  // Limites de caracteres
+  static const int _limiteNome = 30;
+  static const int _limiteDescricao = 150;
+  static const int _limiteContato = 15;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -49,6 +54,7 @@ class _PetCadastroViewState extends State<PetCadastroView> {
                       // Campo Nome
                       TextFormField(
                         controller: _nomeController,
+                        maxLength: _limiteNome,
                         decoration: InputDecoration(
                           labelText: 'Nome do Pet *',
                           prefixIcon: const Icon(Icons.pets),
@@ -57,13 +63,18 @@ class _PetCadastroViewState extends State<PetCadastroView> {
                           ),
                           filled: true,
                           fillColor: Colors.grey[50],
+                          counterText: '${_nomeController.text.length}/$_limiteNome',
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Por favor, digite o nome do pet';
                           }
+                          if (value.length > _limiteNome) {
+                            return 'Nome muito longo (máx. $_limiteNome caracteres)';
+                          }
                           return null;
                         },
+                        onChanged: (_) => setState(() {}),
                       ),
                       
                       const SizedBox(height: 16),
@@ -71,6 +82,8 @@ class _PetCadastroViewState extends State<PetCadastroView> {
                       // Campo Descrição
                       TextFormField(
                         controller: _descricaoController,
+                        maxLength: _limiteDescricao,
+                        maxLines: 3,
                         decoration: InputDecoration(
                           labelText: 'Descrição *',
                           prefixIcon: const Icon(Icons.description),
@@ -79,14 +92,18 @@ class _PetCadastroViewState extends State<PetCadastroView> {
                           ),
                           filled: true,
                           fillColor: Colors.grey[50],
+                          counterText: '${_descricaoController.text.length}/$_limiteDescricao',
                         ),
-                        maxLines: 3,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Por favor, digite uma descrição';
                           }
+                          if (value.length > _limiteDescricao) {
+                            return 'Descrição muito longa (máx. $_limiteDescricao caracteres)';
+                          }
                           return null;
                         },
+                        onChanged: (_) => setState(() {}),
                       ),
                       
                       const SizedBox(height: 16),
@@ -94,6 +111,7 @@ class _PetCadastroViewState extends State<PetCadastroView> {
                       // Campo Contato
                       TextFormField(
                         controller: _contatoController,
+                        maxLength: _limiteContato,
                         decoration: InputDecoration(
                           labelText: 'Contato *',
                           prefixIcon: const Icon(Icons.phone),
@@ -102,14 +120,19 @@ class _PetCadastroViewState extends State<PetCadastroView> {
                           ),
                           filled: true,
                           fillColor: Colors.grey[50],
+                          counterText: '${_contatoController.text.length}/$_limiteContato',
                         ),
                         keyboardType: TextInputType.phone,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Por favor, digite um contato';
                           }
+                          if (value.length > _limiteContato) {
+                            return 'Contato muito longo (máx. $_limiteContato caracteres)';
+                          }
                           return null;
                         },
+                        onChanged: (_) => setState(() {}),
                       ),
                       
                       const SizedBox(height: 32),
@@ -273,9 +296,10 @@ class _PetCadastroViewState extends State<PetCadastroView> {
             ),
           ),
           const SizedBox(height: 12),
-          _buildInfoItem('• Todos os campos marcados com * são obrigatórios'),
+          _buildInfoItem('• Nome: máximo $_limiteNome caracteres'),
+          _buildInfoItem('• Descrição: máximo $_limiteDescricao caracteres'),
+          _buildInfoItem('• Contato: máximo $_limiteContato caracteres'),
           _buildInfoItem('• A foto ajuda na identificação do seu pet'),
-          _buildInfoItem('• O contato será usado caso seu pet seja encontrado'),
           _buildInfoItem('• Após cadastrar, gere o QR Code para colocar na coleira'),
         ],
       ),

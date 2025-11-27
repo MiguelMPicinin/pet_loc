@@ -20,6 +20,11 @@ class _PetCRUDViewState extends State<PetCRUDView> {
   final TextEditingController _contatoController = TextEditingController();
   final PetController _controller = PetController();
 
+  // Limites de caracteres
+  static const int _limiteNome = 30;
+  static const int _limiteDescricao = 150;
+  static const int _limiteContato = 15;
+
   bool _isEditing = false;
   bool _isLoading = false;
   String? _error;
@@ -114,6 +119,7 @@ class _PetCRUDViewState extends State<PetCRUDView> {
                     controller: _nomeController,
                     icon: Icons.pets,
                     enabled: _isEditing,
+                    maxLength: _limiteNome,
                   ),
 
                   const SizedBox(height: 16),
@@ -124,6 +130,7 @@ class _PetCRUDViewState extends State<PetCRUDView> {
                     icon: Icons.description,
                     enabled: _isEditing,
                     maxLines: 3,
+                    maxLength: _limiteDescricao,
                   ),
 
                   const SizedBox(height: 16),
@@ -134,6 +141,7 @@ class _PetCRUDViewState extends State<PetCRUDView> {
                     icon: Icons.phone,
                     enabled: _isEditing,
                     keyboardType: TextInputType.phone,
+                    maxLength: _limiteContato,
                   ),
 
                   const SizedBox(height: 32),
@@ -194,6 +202,7 @@ class _PetCRUDViewState extends State<PetCRUDView> {
     required IconData icon,
     required bool enabled,
     int maxLines = 1,
+    int? maxLength,
     TextInputType keyboardType = TextInputType.text,
   }) {
     return Column(
@@ -211,6 +220,7 @@ class _PetCRUDViewState extends State<PetCRUDView> {
           controller: controller,
           enabled: enabled,
           maxLines: maxLines,
+          maxLength: maxLength,
           keyboardType: keyboardType,
           decoration: InputDecoration(
             prefixIcon: Icon(icon),
@@ -219,7 +229,9 @@ class _PetCRUDViewState extends State<PetCRUDView> {
             ),
             filled: true,
             fillColor: enabled ? Colors.white : Colors.grey[100],
+            counterText: maxLength != null ? '${controller.text.length}/$maxLength' : null,
           ),
+          onChanged: (_) => setState(() {}),
         ),
       ],
     );
@@ -294,7 +306,7 @@ class _PetCRUDViewState extends State<PetCRUDView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Informações do Cadastro',
+            'Limites de Caracteres',
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 16,
@@ -302,13 +314,9 @@ class _PetCRUDViewState extends State<PetCRUDView> {
             ),
           ),
           const SizedBox(height: 12),
-          _buildInfoItem('ID do Pet', widget.pet.id ?? 'N/A'),
-          _buildInfoItem('Status', 'Cadastrado'),
-          if (widget.pet.criadoEm != null)
-            _buildInfoItem(
-              'Data de Cadastro',
-              '${widget.pet.criadoEm!.day}/${widget.pet.criadoEm!.month}/${widget.pet.criadoEm!.year}',
-            ),
+          _buildInfoItem('Nome', '$_limiteNome caracteres'),
+          _buildInfoItem('Descrição', '$_limiteDescricao caracteres'),
+          _buildInfoItem('Contato', '$_limiteContato caracteres'),
         ],
       ),
     );
@@ -423,6 +431,36 @@ class _PetCRUDViewState extends State<PetCRUDView> {
       return;
     }
 
+    if (_nomeController.text.length > _limiteNome) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Nome muito longo (máx. $_limiteNome caracteres)'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_descricaoController.text.length > _limiteDescricao) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Descrição muito longa (máx. $_limiteDescricao caracteres)'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_contatoController.text.length > _limiteContato) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Contato muito longo (máx. $_limiteContato caracteres)'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _error = null;
@@ -516,7 +554,6 @@ class _PetCRUDViewState extends State<PetCRUDView> {
   }
 
   void _generateQRCode() {
-    // TODO: Implementar geração real de QR Code com pacote qr_flutter
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('QR Code gerado para ${widget.pet.nome}'),

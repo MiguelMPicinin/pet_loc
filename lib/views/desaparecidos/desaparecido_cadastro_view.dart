@@ -20,6 +20,12 @@ class _CriarDesaparecidoScreenState extends State<CriarDesaparecidoScreen> {
   final _descricaoController = TextEditingController();
   final _contatoController = TextEditingController();
   final _imagePicker = ImagePicker();
+  
+  // Limites de caracteres
+  static const int _limiteNome = 30;
+  static const int _limiteDescricao = 300;
+  static const int _limiteContato = 15;
+
   File? _imageFile;
   bool _isEditing = false;
   String? _desaparecidoId;
@@ -67,70 +73,120 @@ class _CriarDesaparecidoScreenState extends State<CriarDesaparecidoScreen> {
   }
 
   Future<void> _saveData() async {
-    if (_nomeController.text.isNotEmpty &&
-        _descricaoController.text.isNotEmpty &&
-        _contatoController.text.isNotEmpty) {
-      try {
-        String? base64Image;
-
-        if (_imageFile != null) {
-          final bytes = await _imageFile!.readAsBytes();
-          base64Image = base64Encode(bytes);
-        } else if (_isEditing && widget.desaparecidoData?['imagem'] != null && 
-                   widget.desaparecidoData!['imagem'].isNotEmpty) {
-          base64Image = widget.desaparecidoData!['imagem'];
-        }
-
-        final FirebaseFirestore firestore = FirebaseFirestore.instance;
-        final String currentUserId = 'user123';
-
-        if (_isEditing) {
-          await firestore.collection('desaparecidos').doc(_desaparecidoId).update({
-            'nome': _nomeController.text,
-            'descricao': _descricaoController.text,
-            'contato': _contatoController.text,
-            'imagemBase64': base64Image ?? '',
-            'atualizadoEm': FieldValue.serverTimestamp(),
-          });
-        } else {
-          await firestore.collection('desaparecidos').add({
-            'nome': _nomeController.text,
-            'descricao': _descricaoController.text,
-            'contato': _contatoController.text,
-            'imagemBase64': base64Image ?? '',
-            'userId': currentUserId,
-            'encontrado': false,
-            'criadoEm': FieldValue.serverTimestamp(),
-            'atualizadoEm': FieldValue.serverTimestamp(),
-          });
-        }
-
-        _clearForm();
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_isEditing 
-                ? 'Registro atualizado com sucesso!'
-                : 'Animal desaparecido salvo com sucesso!'
-            ),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        Navigator.pushReplacementNamed(context, AppRoutes.desaparecidos);
-      } catch (error) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao salvar os dados: $error'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } else {
+    if (_nomeController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Preencha todos os campos.'),
+          content: Text('Digite o nome do pet.'),
           backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (_descricaoController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Digite a descrição.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (_contatoController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Digite o contato.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Validação de limites
+    if (_nomeController.text.length > _limiteNome) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Nome muito longo (máx. $_limiteNome caracteres)'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (_descricaoController.text.length > _limiteDescricao) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Descrição muito longa (máx. $_limiteDescricao caracteres)'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (_contatoController.text.length > _limiteContato) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Contato muito longo (máx. $_limiteContato caracteres)'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      String? base64Image;
+
+      if (_imageFile != null) {
+        final bytes = await _imageFile!.readAsBytes();
+        base64Image = base64Encode(bytes);
+      } else if (_isEditing && widget.desaparecidoData?['imagem'] != null && 
+                 widget.desaparecidoData!['imagem'].isNotEmpty) {
+        base64Image = widget.desaparecidoData!['imagem'];
+      }
+
+      final FirebaseFirestore firestore = FirebaseFirestore.instance;
+      final String currentUserId = 'user123';
+
+      if (_isEditing) {
+        await firestore.collection('desaparecidos').doc(_desaparecidoId).update({
+          'nome': _nomeController.text,
+          'descricao': _descricaoController.text,
+          'contato': _contatoController.text,
+          'imagemBase64': base64Image ?? '',
+          'atualizadoEm': FieldValue.serverTimestamp(),
+        });
+      } else {
+        await firestore.collection('desaparecidos').add({
+          'nome': _nomeController.text,
+          'descricao': _descricaoController.text,
+          'contato': _contatoController.text,
+          'imagemBase64': base64Image ?? '',
+          'userId': currentUserId,
+          'encontrado': false,
+          'criadoEm': FieldValue.serverTimestamp(),
+          'atualizadoEm': FieldValue.serverTimestamp(),
+        });
+      }
+
+      _clearForm();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_isEditing 
+              ? 'Registro atualizado com sucesso!'
+              : 'Animal desaparecido salvo com sucesso!'
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      Navigator.pushReplacementNamed(context, AppRoutes.desaparecidos);
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao salvar os dados: $error'),
+          backgroundColor: Colors.red,
         ),
       );
     }
@@ -208,34 +264,58 @@ class _CriarDesaparecidoScreenState extends State<CriarDesaparecidoScreen> {
               child: _buildImagePreview(),
             ),
             const SizedBox(height: 24),
+            
+            // Nome
             TextField(
               controller: _nomeController,
-              decoration: const InputDecoration(
+              maxLength: _limiteNome,
+              decoration: InputDecoration(
                 labelText: 'Nome do Pet',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.pets),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.pets),
+                counterText: '${_nomeController.text.length}/$_limiteNome',
               ),
+              onChanged: (_) => setState(() {}),
             ),
+            
             const SizedBox(height: 16),
+            
+            // Descrição
             TextField(
               controller: _descricaoController,
+              maxLength: _limiteDescricao,
               maxLines: 4,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Descrição (raça, características, última localização)',
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
                 alignLabelWithHint: true,
+                counterText: '${_descricaoController.text.length}/$_limiteDescricao',
               ),
+              onChanged: (_) => setState(() {}),
             ),
+            
             const SizedBox(height: 16),
+            
+            // Contato
             TextField(
               controller: _contatoController,
-              decoration: const InputDecoration(
+              maxLength: _limiteContato,
+              decoration: InputDecoration(
                 labelText: 'Contato (telefone/whatsapp)',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.phone),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.phone),
+                counterText: '${_contatoController.text.length}/$_limiteContato',
               ),
+              onChanged: (_) => setState(() {}),
             ),
+
+            const SizedBox(height: 16),
+
+            // Informações sobre limites
+            _buildLimitesInfo(),
+
             const SizedBox(height: 30),
+            
             ElevatedButton(
               onPressed: _saveData,
               style: ElevatedButton.styleFrom(
@@ -250,6 +330,7 @@ class _CriarDesaparecidoScreenState extends State<CriarDesaparecidoScreen> {
                 style: const TextStyle(fontSize: 18, color: Colors.white),
               ),
             ),
+            
             if (_isEditing) ...[
               const SizedBox(height: 12),
               OutlinedButton(
@@ -272,6 +353,34 @@ class _CriarDesaparecidoScreenState extends State<CriarDesaparecidoScreen> {
         ),
       ),
       bottomNavigationBar: _buildBottomNavigationBar(2),
+    );
+  }
+
+  Widget _buildLimitesInfo() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A73E8).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '📋 Limites de Caracteres',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1A73E8),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Nome: $_limiteNome • Descrição: $_limiteDescricao • Contato: $_limiteContato',
+            style: const TextStyle(fontSize: 12),
+          ),
+        ],
+      ),
     );
   }
 
