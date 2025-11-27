@@ -78,11 +78,11 @@ class _HomeViewState extends State<HomeView> {
                     height: 96,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.pets, color: Color(0xFF1a237e), size: 42);
+                      return const Icon(Icons.pets, color: Color(0xFF1A73E8), size: 42);
                     },
                   ),
                 )
-              : const Icon(Icons.pets, color: Color(0xFF1a237e), size: 42),
+              : const Icon(Icons.pets, color: Color(0xFF1A73E8), size: 42),
         ),
         const SizedBox(height: 8),
         SizedBox(
@@ -111,7 +111,7 @@ class _HomeViewState extends State<HomeView> {
           radius: 48,
           backgroundColor: Colors.white,
           child: IconButton(
-            icon: const Icon(Icons.add, color: Color(0xFF1a237e), size: 42),
+            icon: const Icon(Icons.add, color: Color(0xFF1A73E8), size: 42),
             onPressed: () {
               Navigator.pushNamed(context, AppRoutes.cadastroPet);
             },
@@ -142,7 +142,7 @@ class _HomeViewState extends State<HomeView> {
         const CircleAvatar(
           radius: 48,
           backgroundColor: Colors.white,
-          child: Icon(Icons.pets, color: Color(0xFF1a237e), size: 42),
+          child: Icon(Icons.pets, color: Color(0xFF1A73E8), size: 42),
         ),
         const SizedBox(height: 8),
         SizedBox(
@@ -165,7 +165,7 @@ class _HomeViewState extends State<HomeView> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('PetLoc'),
-        backgroundColor: const Color(0xFF1a237e),
+        backgroundColor: const Color(0xFF1A73E8),
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -180,7 +180,7 @@ class _HomeViewState extends State<HomeView> {
           // Container azul
           Container(
             height: (MediaQuery.of(context).size.height * 0.25),
-            color: const Color(0xFF1a237e),
+            color: const Color(0xFF1A73E8),
             child: Center(
               child: Consumer<PetController>(
                 builder: (context, petController, child) {
@@ -287,13 +287,13 @@ class _HomeViewState extends State<HomeView> {
                 width: 60, // Largura fixa
                 height: 60, // Altura fixa
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1a237e).withOpacity(0.1),
+                  color: const Color(0xFF1A73E8).withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   icon, 
                   size: 32, // Ícone de tamanho moderado
-                  color: const Color(0xFF1a237e),
+                  color: const Color(0xFF1A73E8),
                 ),
               ),
               // Container para texto com altura flexível
@@ -307,7 +307,7 @@ class _HomeViewState extends State<HomeView> {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1a237e),
+                        color: Color(0xFF1A73E8),
                       ),
                       textAlign: TextAlign.center,
                       maxLines: 1,
@@ -380,7 +380,7 @@ class _HomeViewState extends State<HomeView> {
         ),
       ],
       currentIndex: currentIndex,
-      selectedItemColor: const Color(0xFF1a237e),
+      selectedItemColor: const Color(0xFF1A73E8),
       unselectedItemColor: Colors.grey,
       type: BottomNavigationBarType.fixed,
       backgroundColor: Colors.white,

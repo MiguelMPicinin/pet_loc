@@ -16,6 +16,94 @@ class PetView extends StatefulWidget {
 class _PetViewState extends State<PetView> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  int _selectedIndex = 1; // Índice 1 corresponde à tela de Pets
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    switch (index) {
+      case 0:
+        Navigator.pushReplacementNamed(context, AppRoutes.home);
+        break;
+      case 1:
+        // Já está na tela de Pets, não faz nada
+        break;
+      case 2:
+        Navigator.pushReplacementNamed(context, AppRoutes.desaparecidos);
+        break;
+      case 3:
+        Navigator.pushReplacementNamed(context, AppRoutes.loja);
+        break;
+      case 4:
+        Navigator.pushReplacementNamed(context, AppRoutes.community);
+        break;
+    }
+  }
+
+  void _logout() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Sair'),
+          content: const Text('Tem certeza que deseja sair?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.pushReplacementNamed(context, AppRoutes.login);
+              },
+              child: const Text('Sair'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildBottomNavigationBar(int currentIndex) {
+    return BottomNavigationBar(
+      items: const <BottomNavigationBarItem>[
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_outlined),
+          activeIcon: Icon(Icons.home),
+          label: 'Home',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.pets_outlined),
+          activeIcon: Icon(Icons.pets),
+          label: 'Pets',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.warning_outlined),
+          activeIcon: Icon(Icons.warning),
+          label: 'Desaparecidos',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.shopping_cart_outlined),
+          activeIcon: Icon(Icons.shopping_cart),
+          label: 'Loja',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.people_outlined),
+          activeIcon: Icon(Icons.people),
+          label: 'Comunidade',
+        ),
+      ],
+      currentIndex: currentIndex,
+      selectedItemColor: const Color(0xFF1A73E8),
+      unselectedItemColor: Colors.grey,
+      type: BottomNavigationBarType.fixed,
+      backgroundColor: Colors.white,
+      elevation: 8,
+      onTap: _onItemTapped,
+    );
+  }
 
   @override
   void initState() {
@@ -41,6 +129,7 @@ class _PetViewState extends State<PetView> {
           ),
         ),
         backgroundColor: const Color(0xFF1A73E8),
+        foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           IconButton(
@@ -49,6 +138,11 @@ class _PetViewState extends State<PetView> {
               final controller = Provider.of<PetController>(context, listen: false);
               controller.refresh();
             },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+            tooltip: 'Sair',
           ),
         ],
       ),
@@ -83,6 +177,7 @@ class _PetViewState extends State<PetView> {
         backgroundColor: const Color(0xFF1A73E8),
         child: const Icon(Icons.add, color: Colors.white),
       ),
+      bottomNavigationBar: _buildBottomNavigationBar(_selectedIndex),
     );
   }
 

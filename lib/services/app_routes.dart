@@ -52,8 +52,45 @@ class AppRoutes {
       },
       loja: (context) => LojaScreen(),
       lojaComprar: (context) {
-        final produto = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-        return ComprarLojaScreen(produto: produto);
+        final arguments = ModalRoute.of(context)!.settings.arguments;
+        if (arguments != null && arguments is Map<String, dynamic>) {
+          return ComprarLojaScreen(produto: arguments);
+        } else {
+          // Fallback para caso não receba argumentos válidos
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Erro'),
+              backgroundColor: const Color(0xFF1A73E8),
+            ),
+            body: const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, size: 64, color: Colors.red),
+                    SizedBox(height: 16),
+                    Text(
+                      'Produto não encontrado',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Não foi possível carregar as informações do produto.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                    SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: null,
+                      child: Text('Voltar à Loja'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
       },
       localizacaoPet: (context) => LocalizacaoPetView(),
       community: (context) => const CommunityView(),

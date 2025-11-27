@@ -17,6 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isLoading = false;
+  bool _senhaVisivel = false;
 
   Future<void> _fazerLogin() async {
     if (_emailController.text.isEmpty || _senhaController.text.isEmpty) {
@@ -86,7 +87,6 @@ class _LoginScreenState extends State<LoginScreen> {
       });
     }
   }
-
 
   Future<void> _verificarOuCriarUsuario(User user) async {
     final userDoc = await _firestore.collection('users').doc(user.uid).get();
@@ -161,6 +161,12 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _alternarVisibilidadeSenha() {
+    setState(() {
+      _senhaVisivel = !_senhaVisivel;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -202,7 +208,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: _senhaController,
-              obscureText: true,
+              obscureText: !_senhaVisivel,
               decoration: InputDecoration(
                 labelText: "Senha",
                 labelStyle: const TextStyle(color: Colors.white70),
@@ -212,6 +218,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 prefixIcon: const Icon(Icons.lock),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _senhaVisivel ? Icons.visibility : Icons.visibility_off,
+                    color: Colors.grey,
+                  ),
+                  onPressed: _alternarVisibilidadeSenha,
+                ),
               ),
               onSubmitted: (_) => _fazerLogin(),
             ),

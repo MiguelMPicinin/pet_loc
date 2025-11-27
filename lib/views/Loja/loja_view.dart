@@ -34,7 +34,6 @@ class _LojaScreenState extends State<LojaScreen> {
     try {
       print('🔍 Carregando produtos do Firestore...');
       
-      // Carregar SEM ordenação para evitar erro de índice
       final snapshot = await _firestore
           .collection('produtos_loja')
           .where('ativo', isEqualTo: true)
@@ -165,12 +164,13 @@ class _LojaScreenState extends State<LojaScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // IMAGEM DO PRODUTO
             Stack(
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                   child: Container(
-                    height: 140,
+                    height: 120, // Reduzido de 140 para 120
                     width: double.infinity,
                     color: Colors.grey[100],
                     child: imageBytes != null
@@ -183,7 +183,7 @@ class _LojaScreenState extends State<LojaScreen> {
                           )
                         : const Icon(
                             Icons.pets,
-                            size: 50,
+                            size: 40, // Reduzido de 50 para 40
                             color: Colors.grey,
                           ),
                   ),
@@ -193,7 +193,7 @@ class _LojaScreenState extends State<LojaScreen> {
                     top: 8,
                     left: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3), // Reduzido
                       decoration: BoxDecoration(
                         color: Colors.red,
                         borderRadius: BorderRadius.circular(4),
@@ -202,7 +202,7 @@ class _LojaScreenState extends State<LojaScreen> {
                         'ESGOTADO',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: 9, // Reduzido de 10 para 9
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -211,78 +211,92 @@ class _LojaScreenState extends State<LojaScreen> {
               ],
             ),
 
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    produto['nome'],
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      height: 1.3,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'R\$ ${preco.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A73E8),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.local_shipping,
-                        size: 14,
-                        color: Colors.grey[600],
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Frete grátis',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
+            // INFORMAÇÕES DO PRODUTO
+            Expanded( // ADICIONADO EXPANDED PARA EVITAR OVERFLOW
+              child: Padding(
+                padding: const EdgeInsets.all(10), // Reduzido de 12 para 10
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween, // Distribui o espaço
+                  children: [
+                    // NOME E PREÇO
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          produto['nome'],
+                          style: const TextStyle(
+                            fontSize: 13, // Reduzido de 14 para 13
+                            fontWeight: FontWeight.w600,
+                            height: 1.2, // Reduzido de 1.3 para 1.2
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: semEstoque ? null : () {
-                        // Navega para a tela de compra
-                        Navigator.pushNamed(
-                          context,
-                          AppRoutes.lojaComprar,
-                          arguments: produto,
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: semEstoque ? Colors.grey : const Color(0xFF1A73E8),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                        const SizedBox(height: 6), // Reduzido de 8 para 6
+                        Text(
+                          'R\$ ${preco.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 16, // Reduzido de 18 para 16
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1A73E8),
+                          ),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                      ),
-                      child: Text(
-                        semEstoque ? 'Indisponível' : 'Comprar',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      ],
                     ),
-                  ),
-                ],
+
+                    // FRETE E BOTÃO
+                    Column(
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.local_shipping,
+                              size: 12, // Reduzido de 14 para 12
+                              color: Colors.grey[600],
+                            ),
+                            const SizedBox(width: 3), // Reduzido de 4 para 3
+                            Text(
+                              'Frete grátis',
+                              style: TextStyle(
+                                fontSize: 11, // Reduzido de 12 para 11
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: semEstoque ? null : () {
+                              Navigator.pushNamed(
+                                context,
+                                AppRoutes.lojaComprar,
+                                arguments: produto,
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: semEstoque ? Colors.grey : const Color(0xFF1A73E8),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 6), // Reduzido de 8 para 6
+                            ),
+                            child: Text(
+                              semEstoque ? 'Indisponível' : 'Comprar',
+                              style: const TextStyle(
+                                fontSize: 12, // Reduzido de 14 para 12
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -420,7 +434,7 @@ class _LojaScreenState extends State<LojaScreen> {
                           crossAxisCount: 2,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
-                          childAspectRatio: 0.75,
+                          childAspectRatio: 0.68, // Ajustado de 0.75 para 0.68
                         ),
                         itemCount: _produtosFiltrados.length,
                         itemBuilder: (context, index) => _buildProductCard(_produtosFiltrados[index]),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../services//app_routes.dart';
+import '../../services/app_routes.dart';
 
 class CadastroUsuarioScreen extends StatefulWidget {
   @override
@@ -12,6 +12,7 @@ class _CadastroUsuarioScreenState extends State<CadastroUsuarioScreen> {
   final _emailController = TextEditingController();
   final _senhaController = TextEditingController();
   bool _carregando = false;
+  bool _senhaVisivel = false;
   String? _erro;
 
   Future<void> _criarConta() async {
@@ -58,6 +59,12 @@ class _CadastroUsuarioScreenState extends State<CadastroUsuarioScreen> {
     }
   }
 
+  void _alternarVisibilidadeSenha() {
+    setState(() {
+      _senhaVisivel = !_senhaVisivel;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -99,11 +106,12 @@ class _CadastroUsuarioScreenState extends State<CadastroUsuarioScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
+                  keyboardType: TextInputType.emailAddress,
                 ),
                 SizedBox(height: 10),
                 TextField(
                   controller: _senhaController,
-                  obscureText: true,
+                  obscureText: !_senhaVisivel,
                   decoration: InputDecoration(
                     labelText: "Senha",
                     filled: true,
@@ -111,7 +119,13 @@ class _CadastroUsuarioScreenState extends State<CadastroUsuarioScreen> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    suffixIcon: Icon(Icons.visibility_off),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _senhaVisivel ? Icons.visibility : Icons.visibility_off,
+                        color: Colors.grey,
+                      ),
+                      onPressed: _alternarVisibilidadeSenha,
+                    ),
                   ),
                 ),
                 if (_erro != null) ...[
@@ -127,6 +141,9 @@ class _CadastroUsuarioScreenState extends State<CadastroUsuarioScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[800],
                     padding: EdgeInsets.symmetric(vertical: 12, horizontal: 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   child: _carregando
                       ? CircularProgressIndicator(color: Colors.white)
@@ -151,5 +168,13 @@ class _CadastroUsuarioScreenState extends State<CadastroUsuarioScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _nomeController.dispose();
+    _emailController.dispose();
+    _senhaController.dispose();
+    super.dispose();
   }
 }
