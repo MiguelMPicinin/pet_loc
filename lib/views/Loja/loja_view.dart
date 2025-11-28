@@ -12,6 +12,7 @@ class LojaScreen extends StatefulWidget {
 class _LojaScreenState extends State<LojaScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   List<Map<String, dynamic>> _produtos = [];
+  List<Map<String, dynamic>> _produtosFiltrados = [];
   bool _isLoading = true;
   final List<String> _categorias = [
     'Todos',
@@ -23,6 +24,8 @@ class _LojaScreenState extends State<LojaScreen> {
     'Acessórios'
   ];
   String _categoriaSelecionada = 'Todos';
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   // Função para truncar o nome do produto
   String _truncateProductName(String name) {
@@ -36,6 +39,49 @@ class _LojaScreenState extends State<LojaScreen> {
   void initState() {
     super.initState();
     _loadProdutos();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      _searchQuery = _searchController.text.toLowerCase().trim();
+      _aplicarFiltros();
+    });
+  }
+
+  void _aplicarFiltros() {
+    List<Map<String, dynamic>> produtosFiltrados = List.from(_produtos);
+
+    // Aplicar filtro de categoria
+    if (_categoriaSelecionada != 'Todos') {
+      produtosFiltrados = produtosFiltrados.where((produto) {
+        return produto['categoria'] == _categoriaSelecionada;
+      }).toList();
+    }
+
+    // Aplicar filtro de pesquisa
+    if (_searchQuery.isNotEmpty) {
+      produtosFiltrados = produtosFiltrados.where((produto) {
+        final nome = produto['nome']?.toString().toLowerCase() ?? '';
+        final descricao = produto['descricao']?.toString().toLowerCase() ?? '';
+        final categoria = produto['categoria']?.toString().toLowerCase() ?? '';
+        
+        return nome.contains(_searchQuery) || 
+               descricao.contains(_searchQuery) ||
+               categoria.contains(_searchQuery);
+      }).toList();
+    }
+
+    setState(() {
+      _produtosFiltrados = produtosFiltrados;
+    });
   }
 
   Future<void> _loadProdutos() async {
@@ -84,6 +130,8 @@ class _LojaScreenState extends State<LojaScreen> {
         print('✅ Produto carregado: ${produto['nome']}');
         return produto;
       }).toList();
+      
+      _produtosFiltrados = List.from(_produtos);
       _isLoading = false;
     });
 
@@ -93,12 +141,15 @@ class _LojaScreenState extends State<LojaScreen> {
   void _debugProdutos() {
     print('\n=== 🛍️ DEBUG PRODUTOS ===');
     print('Total de produtos carregados: ${_produtos.length}');
+    print('Produtos filtrados: ${_produtosFiltrados.length}');
+    print('Termo de pesquisa: "$_searchQuery"');
+    print('Categoria selecionada: "$_categoriaSelecionada"');
     if (_produtos.isEmpty) {
       print('🚫 NENHUM PRODUTO ENCONTRADO!');
     } else {
-      for (var i = 0; i < _produtos.length; i++) {
-        final produto = _produtos[i];
-        print('${i + 1}. ${produto['nome']}');
+      for (var i = 0; i < _produtosFiltrados.length; i++) {
+        final produto = _produtosFiltrados[i];
+        print('${i + 1}. ${produto['nome']} - ${produto['categoria']}');
       }
     }
     print('========================\n');
@@ -111,11 +162,6 @@ class _LojaScreenState extends State<LojaScreen> {
     await _loadProdutos();
   }
 
-  List<Map<String, dynamic>> get _produtosFiltrados {
-    if (_categoriaSelecionada == 'Todos') return _produtos;
-    return _produtos.where((produto) => produto['categoria'] == _categoriaSelecionada).toList();
-  }
-
   Widget _buildCategoriaChip(String categoria) {
     final bool isSelected = categoria == _categoriaSelecionada;
     return GestureDetector(
@@ -123,6 +169,7 @@ class _LojaScreenState extends State<LojaScreen> {
         setState(() {
           _categoriaSelecionada = categoria;
         });
+        _aplicarFiltros();
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -167,7 +214,6 @@ class _LojaScreenState extends State<LojaScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          // Navega para a tela do produto ao clicar no card
           Navigator.pushNamed(
             context,
             AppRoutes.lojaComprar,
@@ -242,7 +288,7 @@ class _LojaScreenState extends State<LojaScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _truncateProductName(produto['nome']), // NOME TRUNCADO AQUI
+                            _truncateProductName(produto['nome']),
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -324,6 +370,42 @@ class _LojaScreenState extends State<LojaScreen> {
     );
   }
 
+  Widget _buildSearchField() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: 'Pesquisar produtos...',
+            prefixIcon: Icon(Icons.search, color: Color(0xFF1A73E8)),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+                    icon: Icon(Icons.clear, color: Colors.grey),
+                    onPressed: () {
+                      _searchController.clear();
+                    },
+                  )
+                : null,
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildFloatingActionButton() {
     return FloatingActionButton(
       onPressed: () async {
@@ -391,11 +473,6 @@ class _LojaScreenState extends State<LojaScreen> {
             tooltip: 'Meus Produtos',
           ),
           IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {},
-            tooltip: 'Pesquisar',
-          ),
-          IconButton(
             icon: const Icon(Icons.notifications_none),
             onPressed: () {},
             tooltip: 'Notificações',
@@ -417,6 +494,10 @@ class _LojaScreenState extends State<LojaScreen> {
               onRefresh: _refreshProdutos,
               child: Column(
                 children: [
+                  // CAMPO DE PESQUISA
+                  _buildSearchField(),
+
+                  // CATEGORIAS
                   Container(
                     height: 60,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -429,12 +510,15 @@ class _LojaScreenState extends State<LojaScreen> {
                     ),
                   ),
 
+                  // CONTADOR DE PRODUTOS
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
                       children: [
                         Text(
-                          '${_produtosFiltrados.length} produtos encontrados',
+                          _searchQuery.isNotEmpty
+                              ? '${_produtosFiltrados.length} produto(s) encontrado(s) para "$_searchQuery"'
+                              : '${_produtosFiltrados.length} produto(s) encontrado(s)',
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 12,
@@ -445,19 +529,58 @@ class _LojaScreenState extends State<LojaScreen> {
                   ),
                   const SizedBox(height: 8),
 
+                  // LISTA DE PRODUTOS
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: GridView.builder(
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 0.68,
-                        ),
-                        itemCount: _produtosFiltrados.length,
-                        itemBuilder: (context, index) => _buildProductCard(_produtosFiltrados[index]),
-                      ),
+                      child: _produtosFiltrados.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.search_off,
+                                    size: 64,
+                                    color: Colors.grey[400],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    _searchQuery.isNotEmpty
+                                        ? 'Nenhum produto encontrado para "$_searchQuery"'
+                                        : 'Nenhum produto disponível',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 16,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  if (_searchQuery.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    TextButton(
+                                      onPressed: () {
+                                        _searchController.clear();
+                                      },
+                                      child: Text(
+                                        'Limpar pesquisa',
+                                        style: TextStyle(
+                                          color: Color(0xFF1A73E8),
+                                        ),
+                                      ),
+                                    ),
+                                  ]
+                                ],
+                              ),
+                            )
+                          : GridView.builder(
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                childAspectRatio: 0.68,
+                              ),
+                              itemCount: _produtosFiltrados.length,
+                              itemBuilder: (context, index) => _buildProductCard(_produtosFiltrados[index]),
+                            ),
                     ),
                   ),
                 ],
@@ -499,7 +622,7 @@ class _LojaScreenState extends State<LojaScreen> {
         ),
       ],
       currentIndex: currentIndex,
-      selectedItemColor: const Color(0xFF1a237e),
+      selectedItemColor: const Color(0xFF1A73E8),
       unselectedItemColor: Colors.grey,
       type: BottomNavigationBarType.fixed,
       backgroundColor: Colors.white,

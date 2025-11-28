@@ -170,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1a237e),
+      backgroundColor: const Color(0xFF4A90E2),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
@@ -182,6 +182,14 @@ class _LoginScreenState extends State<LoginScreen> {
               color: Colors.white,
             ),
             const SizedBox(height: 10),
+            const Text(
+              "Entre com sua Conta",
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
             const Text(
               "PetLoc",
               style: TextStyle(
@@ -235,7 +243,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   )
                 : ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00bcd4),
+                      backgroundColor: Colors.blue[800],
                       padding: const EdgeInsets.symmetric(
                           vertical: 16, horizontal: 50),
                       shape: RoundedRectangleBorder(

@@ -12,15 +12,19 @@ class LojaController with ChangeNotifier {
   final ImagePicker _imagePicker = ImagePicker();
 
   List<ProdutoModel> _produtos = [];
+  List<ProdutoModel> _produtosFiltrados = [];
   bool _isLoading = false;
   String? _error;
   File? _selectedImage;
+  String _searchQuery = '';
 
   // Getters
   List<ProdutoModel> get produtos => _produtos;
+  List<ProdutoModel> get produtosFiltrados => _produtosFiltrados;
   bool get isLoading => _isLoading;
   String? get error => _error;
   File? get selectedImage => _selectedImage;
+  String get searchQuery => _searchQuery;
 
   List<ProdutoModel> get produtosAtivos => _produtos.where((p) => p.ativo).toList();
 
@@ -49,6 +53,8 @@ class LojaController with ChangeNotifier {
           .map((doc) => ProdutoModel.fromFirestore(doc))
           .toList();
       
+      _produtosFiltrados = List.from(_produtos);
+      
       _setLoading(false);
     } catch (e) {
       print('❌ Erro ao carregar produtos: $e');
@@ -68,6 +74,34 @@ class LojaController with ChangeNotifier {
         .map((snapshot) => snapshot.docs
             .map((doc) => ProdutoModel.fromFirestore(doc))
             .toList());
+  }
+
+  // Método de pesquisa
+  void searchProducts(String query) {
+    _searchQuery = query.toLowerCase().trim();
+    
+    if (_searchQuery.isEmpty) {
+      _produtosFiltrados = List.from(_produtos);
+    } else {
+      _produtosFiltrados = _produtos.where((produto) {
+        final nome = produto.nome.toLowerCase();
+        final descricao = produto.descricao.toLowerCase();
+        final categoria = produto.categoria?.toLowerCase() ?? '';
+        
+        return nome.contains(_searchQuery) || 
+               descricao.contains(_searchQuery) ||
+               categoria.contains(_searchQuery);
+      }).toList();
+    }
+    
+    notifyListeners();
+  }
+
+  // Limpar pesquisa
+  void clearSearch() {
+    _searchQuery = '';
+    _produtosFiltrados = List.from(_produtos);
+    notifyListeners();
   }
 
   // Cadastrar novo produto
@@ -120,7 +154,7 @@ class LojaController with ChangeNotifier {
         imagemBase64: imagemBase64,
         userId: usuarioAtual.uid,
         estoque: estoque,
-        categoria: categoria ?? 'Geral', // ADICIONE CATEGORIA
+        categoria: categoria ?? 'Geral',
       );
 
       print('💾 Salvando produto no Firestore...');
@@ -131,7 +165,15 @@ class LojaController with ChangeNotifier {
       print('✅ Produto salvo com ID: ${docRef.id}');
 
       // Adicionar à lista local com o ID gerado
-      _produtos.insert(0, produto.copyWith(id: docRef.id));
+      final novoProduto = produto.copyWith(id: docRef.id);
+      _produtos.insert(0, novoProduto);
+      
+      // Atualizar lista filtrada
+      if (_searchQuery.isEmpty) {
+        _produtosFiltrados.insert(0, novoProduto);
+      } else {
+        searchProducts(_searchQuery);
+      }
 
       _clearImage();
       _setLoading(false);
@@ -197,7 +239,7 @@ class LojaController with ChangeNotifier {
         'contato': contato,
         'imagemBase64': imagemParaSalvar ?? '',
         'atualizadoEm': FieldValue.serverTimestamp(),
-        'categoria': categoria ?? produtoAtual.categoria ?? 'Geral', // ADICIONE CATEGORIA
+        'categoria': categoria ?? produtoAtual.categoria ?? 'Geral',
       };
 
       if (estoque != null) updateData['estoque'] = estoque;
@@ -208,15 +250,25 @@ class LojaController with ChangeNotifier {
           .update(updateData);
 
       // Atualizar lista local
-      _produtos[produtoIndex] = produtoAtual.copyWith(
+      final produtoAtualizado = produtoAtual.copyWith(
         nome: nome,
         descricao: descricao,
         preco: preco,
         contato: contato,
         imagemBase64: imagemParaSalvar,
         estoque: estoque ?? produtoAtual.estoque,
-        categoria: categoria ?? produtoAtual.categoria, // ADICIONE CATEGORIA
+        categoria: categoria ?? produtoAtual.categoria,
       );
+
+      _produtos[produtoIndex] = produtoAtualizado;
+      
+      // Atualizar lista filtrada
+      final filteredIndex = _produtosFiltrados.indexWhere((p) => p.id == produtoId);
+      if (filteredIndex != -1) {
+        _produtosFiltrados[filteredIndex] = produtoAtualizado;
+      } else {
+        searchProducts(_searchQuery);
+      }
 
       _setLoading(false);
       return true;
@@ -259,6 +311,7 @@ class LojaController with ChangeNotifier {
 
       // Remover da lista local
       _produtos.removeWhere((p) => p.id == produtoId);
+      _produtosFiltrados.removeWhere((p) => p.id == produtoId);
 
       _setLoading(false);
       return true;

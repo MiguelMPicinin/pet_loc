@@ -108,7 +108,7 @@ class _CommunityViewState extends State<CommunityView> with SingleTickerProvider
         ),
       ],
       currentIndex: currentIndex,
-      selectedItemColor: const Color(0xFF1a237e),
+      selectedItemColor: const Color(0xFF1A73E8),
       unselectedItemColor: Colors.grey,
       type: BottomNavigationBarType.fixed,
       backgroundColor: Colors.white,

@@ -1,4 +1,3 @@
-// group_chat_screen.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pet_loc/controller/grupoChatController.dart';
@@ -20,7 +19,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   @override
   void initState() {
     super.initState();
-    // Rolar para baixo quando novas mensagens chegarem
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
     });
@@ -36,7 +34,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
     if (success) {
       _mensagemController.clear();
-      // Rolar para a última mensagem
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
         duration: const Duration(milliseconds: 300),
@@ -53,6 +50,10 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   }
 
   Widget _buildMensagemBubble(Map<String, dynamic> mensagem, bool isCurrentUser) {
+    // Usa campos padronizados com fallback para compatibilidade
+    final userName = mensagem['userName'] ?? mensagem['remetenteNome'] ?? 'Usuário';
+    final timestamp = mensagem['timestamp'] ?? mensagem['enviadoEm'];
+    
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       child: Row(
@@ -64,7 +65,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               child: CircleAvatar(
                 backgroundColor: const Color(0xFF1A73E8).withOpacity(0.1),
                 child: Text(
-                  mensagem['remetenteNome'].toString().substring(0, 1).toUpperCase(),
+                  userName.toString().substring(0, 1).toUpperCase(),
                   style: const TextStyle(
                     color: Color(0xFF1A73E8),
                     fontWeight: FontWeight.bold,
@@ -86,7 +87,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 children: [
                   if (!isCurrentUser)
                     Text(
-                      mensagem['remetenteNome'] ?? 'Usuário',
+                      userName,
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -102,7 +103,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _formatarHora(mensagem['enviadoEm']),
+                    _formatarHora(timestamp),
                     style: TextStyle(
                       fontSize: 10,
                       color: isCurrentUser ? Colors.white70 : Colors.grey[500],
@@ -334,8 +335,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              Navigator.of(context).pop(); // Voltar para a tela anterior
-              // Aqui você pode adicionar a lógica para sair do grupo
+              Navigator.of(context).pop();
             },
             child: const Text(
               'Sair',

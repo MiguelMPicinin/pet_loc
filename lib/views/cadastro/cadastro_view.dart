@@ -68,7 +68,7 @@ class _CadastroUsuarioScreenState extends State<CadastroUsuarioScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF4A90E2),
+      backgroundColor: Color.fromARGB(255, 34, 108, 192),
       body: Padding(
         padding: EdgeInsets.symmetric(horizontal: 24),
         child: Center(
@@ -139,7 +139,7 @@ class _CadastroUsuarioScreenState extends State<CadastroUsuarioScreen> {
                 ElevatedButton(
                   onPressed: _carregando ? null : _criarConta,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[800],
+                    backgroundColor: const Color.fromARGB(255, 23, 77, 138),
                     padding: EdgeInsets.symmetric(vertical: 12, horizontal: 50),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),

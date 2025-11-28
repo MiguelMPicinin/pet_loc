@@ -164,7 +164,7 @@ class _HomeViewState extends State<HomeView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('PetLoc'),
+        title: const Text('Seja bem-vindo ao PetLoc!'),
         backgroundColor: const Color(0xFF1A73E8),
         foregroundColor: Colors.white,
         actions: [
