@@ -1,6 +1,9 @@
+// models/location_model.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LocationModel {
+  final String? id;
+  final String? petId;
   final double latitude;
   final double longitude;
   final String? endereco;
@@ -8,8 +11,13 @@ class LocationModel {
   final String? estado;
   final String? cep;
   final DateTime? timestamp;
+  final String? encontradoPor;
+  final String? telefoneEncontrado;
+  final bool? confirmado;
 
   LocationModel({
+    this.id,
+    this.petId,
     required this.latitude,
     required this.longitude,
     this.endereco,
@@ -17,11 +25,15 @@ class LocationModel {
     this.estado,
     this.cep,
     this.timestamp,
+    this.encontradoPor,
+    this.telefoneEncontrado,
+    this.confirmado = false,
   });
 
-  // Converter para Map (Firestore)
+  // Converter para Firestore
   Map<String, dynamic> toFirestore() {
     return {
+      if (petId != null) 'petId': petId,
       'latitude': latitude,
       'longitude': longitude,
       'endereco': endereco,
@@ -31,29 +43,39 @@ class LocationModel {
       'timestamp': timestamp != null 
           ? Timestamp.fromDate(timestamp!)
           : Timestamp.fromDate(DateTime.now()),
+      'encontradoPor': encontradoPor,
+      'telefoneEncontrado': telefoneEncontrado,
+      'confirmado': confirmado ?? false,
     };
   }
 
   // Criar a partir do Firestore
-  factory LocationModel.fromFirestore(Map<String, dynamic> data) {
+  factory LocationModel.fromFirestore(Map<String, dynamic> data, String? id) {
     Timestamp? timestamp = data['timestamp'] as Timestamp?;
     
     return LocationModel(
-      latitude: (data['latitude'] as num?)?.toDouble() ?? 0.0,
-      longitude: (data['longitude'] as num?)?.toDouble() ?? 0.0,
+      id: id,
+      petId: data['petId'],
+      latitude: (data['latitude'] as num).toDouble(),
+      longitude: (data['longitude'] as num).toDouble(),
       endereco: data['endereco'],
       cidade: data['cidade'],
       estado: data['estado'],
       cep: data['cep'],
       timestamp: timestamp?.toDate(),
+      encontradoPor: data['encontradoPor'],
+      telefoneEncontrado: data['telefoneEncontrado'],
+      confirmado: data['confirmado'] as bool? ?? false,
     );
   }
 
   // Criar a partir do JSON
   factory LocationModel.fromJson(Map<String, dynamic> json) {
     return LocationModel(
-      latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
-      longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
+      id: json['id'],
+      petId: json['petId'],
+      latitude: (json['latitude'] as num).toDouble(),
+      longitude: (json['longitude'] as num).toDouble(),
       endereco: json['endereco'],
       cidade: json['cidade'],
       estado: json['estado'],
@@ -61,12 +83,17 @@ class LocationModel {
       timestamp: json['timestamp'] != null 
           ? DateTime.parse(json['timestamp'])
           : null,
+      encontradoPor: json['encontradoPor'],
+      telefoneEncontrado: json['telefoneEncontrado'],
+      confirmado: json['confirmado'] as bool? ?? false,
     );
   }
 
   // Converter para JSON
   Map<String, dynamic> toJson() {
     return {
+      if (id != null) 'id': id,
+      if (petId != null) 'petId': petId,
       'latitude': latitude,
       'longitude': longitude,
       'endereco': endereco,
@@ -74,11 +101,16 @@ class LocationModel {
       'estado': estado,
       'cep': cep,
       'timestamp': timestamp?.toIso8601String(),
+      'encontradoPor': encontradoPor,
+      'telefoneEncontrado': telefoneEncontrado,
+      'confirmado': confirmado,
     };
   }
 
   // Copiar com alterações
   LocationModel copyWith({
+    String? id,
+    String? petId,
     double? latitude,
     double? longitude,
     String? endereco,
@@ -86,8 +118,13 @@ class LocationModel {
     String? estado,
     String? cep,
     DateTime? timestamp,
+    String? encontradoPor,
+    String? telefoneEncontrado,
+    bool? confirmado,
   }) {
     return LocationModel(
+      id: id ?? this.id,
+      petId: petId ?? this.petId,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       endereco: endereco ?? this.endereco,
@@ -95,6 +132,9 @@ class LocationModel {
       estado: estado ?? this.estado,
       cep: cep ?? this.cep,
       timestamp: timestamp ?? this.timestamp,
+      encontradoPor: encontradoPor ?? this.encontradoPor,
+      telefoneEncontrado: telefoneEncontrado ?? this.telefoneEncontrado,
+      confirmado: confirmado ?? this.confirmado,
     );
   }
 
@@ -122,18 +162,25 @@ class LocationModel {
     if (identical(this, other)) return true;
     
     return other is LocationModel &&
+        other.id == id &&
+        other.petId == petId &&
         other.latitude == latitude &&
         other.longitude == longitude &&
         other.endereco == endereco &&
         other.cidade == cidade &&
         other.estado == estado &&
         other.cep == cep &&
-        other.timestamp == timestamp;
+        other.timestamp == timestamp &&
+        other.encontradoPor == encontradoPor &&
+        other.telefoneEncontrado == telefoneEncontrado &&
+        other.confirmado == confirmado;
   }
 
   @override
   int get hashCode {
     return Object.hash(
+      id,
+      petId,
       latitude,
       longitude,
       endereco,
@@ -141,19 +188,27 @@ class LocationModel {
       estado,
       cep,
       timestamp,
+      encontradoPor,
+      telefoneEncontrado,
+      confirmado,
     );
   }
 
   @override
   String toString() {
     return 'LocationModel('
+        'id: $id, '
+        'petId: $petId, '
         'lat: $latitude, '
         'lng: $longitude, '
         'endereco: $endereco, '
         'cidade: $cidade, '
         'estado: $estado, '
         'cep: $cep, '
-        'timestamp: $timestamp'
+        'timestamp: $timestamp, '
+        'encontradoPor: $encontradoPor, '
+        'telefoneEncontrado: $telefoneEncontrado, '
+        'confirmado: $confirmado'
         ')';
   }
 }

@@ -1,3 +1,4 @@
+// controller/location_controller.dart
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -6,28 +7,29 @@ import 'package:geocoding/geocoding.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/location_model.dart';
-import '../models/area_busca_model.dart';
 
-class LocationController with ChangeNotifier {
+class LocationController extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   
   Position? _currentPosition;
   LocationModel? _currentLocation;
-  List<AreaBuscaModel> _areasBusca = [];
   bool _isLoading = false;
   String? _error;
   bool _locationEnabled = false;
   StreamSubscription<Position>? _positionStream;
-  List<LocationModel> _ultimosAvistamentos = [];
+  Map<String, List<LocationModel>> _petLocations = {}; // Mapa de petId para localizações
 
   // Getters
   Position? get currentPosition => _currentPosition;
   LocationModel? get currentLocation => _currentLocation;
-  List<AreaBuscaModel> get areasBusca => _areasBusca;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get locationEnabled => _locationEnabled;
-  List<LocationModel> get ultimosAvistamentos => _ultimosAvistamentos;
+
+  // Obter localizações de um pet específico
+  List<LocationModel> getPetLocations(String petId) {
+    return _petLocations[petId] ?? [];
+  }
 
   // Inicializar controller
   LocationController() {
@@ -47,9 +49,6 @@ class LocationController with ChangeNotifier {
         await _getCurrentLocation();
         await _startLocationStream();
       }
-      
-      await _loadAreasBusca();
-      await _loadUltimosAvistamentos();
       
       _setLoading(false);
     } catch (e) {
@@ -87,65 +86,56 @@ class LocationController with ChangeNotifier {
   }
 
   // Obter localização atual
-  Future<bool> _getCurrentLocation() async {
+  Future<LocationModel?> getCurrentLocationWithAddress() async {
     try {
       _setLoading(true);
       
       final hasPermission = await _checkPermissions();
       if (!hasPermission) {
         _setLoading(false);
-        return false;
+        return null;
       }
 
       _currentPosition = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best,
+        desiredAccuracy: LocationAccuracy.high,
       );
 
-      // Converter coordenadas em endereço
-      await _getAddressFromCoordinates();
-      
-      _setLoading(false);
-      return true;
-    } catch (e) {
-      _error = 'Erro ao obter localização: $e';
-      _setLoading(false);
-      return false;
-    }
-  }
-
-  // Obter endereço a partir das coordenadas
-  Future<void> _getAddressFromCoordinates() async {
-    if (_currentPosition == null) return;
-
-    try {
-      final places = await placemarkFromCoordinates(
+      // Obter endereço das coordenadas
+      String endereco = await _getAddressFromCoordinates(
         _currentPosition!.latitude,
         _currentPosition!.longitude,
       );
 
-      if (places.isNotEmpty) {
-        final place = places.first;
-        
-        _currentLocation = LocationModel(
-          latitude: _currentPosition!.latitude,
-          longitude: _currentPosition!.longitude,
-          endereco: '${place.street ?? ''} ${place.name ?? ''}'.trim(),
-          cidade: place.locality,
-          estado: place.administrativeArea,
-          cep: place.postalCode,
-          timestamp: DateTime.now(),
-        );
-        
-        notifyListeners();
-      }
-    } catch (e) {
-      print('Erro ao obter endereço: $e');
-      // Mesmo sem endereço, criamos a localização com coordenadas
-      _currentLocation = LocationModel(
+      final location = LocationModel(
         latitude: _currentPosition!.latitude,
         longitude: _currentPosition!.longitude,
+        endereco: endereco,
         timestamp: DateTime.now(),
       );
+
+      _currentLocation = location;
+      _setLoading(false);
+      
+      return location;
+    } catch (e) {
+      _error = 'Erro ao obter localização: $e';
+      _setLoading(false);
+      return null;
+    }
+  }
+
+  // Obter endereço a partir das coordenadas
+  Future<String> _getAddressFromCoordinates(double lat, double lng) async {
+    try {
+      final places = await placemarkFromCoordinates(lat, lng);
+      
+      if (places.isNotEmpty) {
+        final place = places.first;
+        return '${place.street ?? ''}, ${place.subLocality ?? ''}, ${place.locality ?? ''}, ${place.administrativeArea ?? ''}';
+      }
+      return 'Endereço não disponível';
+    } catch (e) {
+      return 'Lat: $lat, Lng: $lng';
     }
   }
 
@@ -162,176 +152,92 @@ class LocationController with ChangeNotifier {
         ),
       ).listen((Position position) {
         _currentPosition = position;
-        _updateCurrentLocation(position);
+        notifyListeners();
       });
     } catch (e) {
       print('Erro ao iniciar stream de localização: $e');
     }
   }
 
-  // Atualizar localização atual
-  Future<void> _updateCurrentLocation(Position position) async {
-    _currentLocation = LocationModel(
-      latitude: position.latitude,
-      longitude: position.longitude,
-      timestamp: DateTime.now(),
-    );
-    
-    notifyListeners();
-  }
-
-  // Forçar atualização da localização
-  Future<bool> refreshLocation() async {
-    return await _getCurrentLocation();
-  }
-
-  // Carregar áreas de busca
-  Future<void> _loadAreasBusca() async {
-    try {
-      final snapshot = await _firestore
-          .collection('areas_busca')
-          .orderBy('criadoEm', descending: true)
-          .get();
-
-      _areasBusca = snapshot.docs
-          .map((doc) => AreaBuscaModel.fromFirestore(doc.data(), doc.id))
-          .toList();
-    } catch (e) {
-      print('Erro ao carregar áreas de busca: $e');
-    }
-  }
-
-  // Carregar últimos avistamentos
-  Future<void> _loadUltimosAvistamentos() async {
-    try {
-      final snapshot = await _firestore
-          .collection('avistamentos')
-          .orderBy('timestamp', descending: true)
-          .limit(50)
-          .get();
-
-      _ultimosAvistamentos = snapshot.docs
-          .map((doc) => LocationModel.fromFirestore(doc.data()))
-          .toList();
-    } catch (e) {
-      print('Erro ao carregar últimos avistamentos: $e');
-    }
-  }
-
-  // Registrar avistamento de pet desaparecido
-  Future<bool> registrarAvistamento({
-    required LocationModel localizacao,
+  // Salvar localização do pet no Firestore
+  Future<bool> savePetLocation({
     required String petId,
-    required String userId,
-    String? observacoes,
+    required LocationModel location,
+    String? encontradoPor,
+    String? telefoneEncontrado,
   }) async {
     try {
       _setLoading(true);
       _error = null;
 
-      await _firestore.collection('avistamentos').add({
-        ...localizacao.toFirestore(),
-        'petId': petId,
-        'userId': userId,
-        'observacoes': observacoes,
-        'confirmado': false,
-      });
-
-      // Recarregar últimos avistamentos
-      await _loadUltimosAvistamentos();
-      
-      _setLoading(false);
-      return true;
-    } catch (e) {
-      _error = 'Erro ao registrar avistamento: $e';
-      _setLoading(false);
-      return false;
-    }
-  }
-
-  // Criar área de busca
-  Future<bool> criarAreaBusca({
-    required LocationModel centro,
-    required double raioKm,
-    String? petId,
-    String? userId,
-    String? descricao,
-  }) async {
-    try {
-      _setLoading(true);
-      _error = null;
-
-      final areaBusca = AreaBuscaModel(
-        centro: centro,
-        raioKm: raioKm,
+      final locationWithPet = location.copyWith(
         petId: petId,
-        userId: userId,
-        descricao: descricao,
+        encontradoPor: encontradoPor,
+        telefoneEncontrado: telefoneEncontrado,
       );
 
-      await _firestore
-          .collection('areas_busca')
-          .add(areaBusca.toFirestore());
+      await _firestore.collection('pet_locations').add(
+        locationWithPet.toFirestore(),
+      );
 
-      // Recarregar áreas de busca
-      await _loadAreasBusca();
+      // Adicionar à lista local
+      if (_petLocations[petId] == null) {
+        _petLocations[petId] = [];
+      }
+      _petLocations[petId]!.insert(0, locationWithPet);
       
       _setLoading(false);
+      notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Erro ao criar área de busca: $e';
+      _error = 'Erro ao salvar localização: $e';
       _setLoading(false);
+      notifyListeners();
       return false;
     }
   }
 
-  // Buscar avistamentos próximos
-  Future<List<LocationModel>> buscarAvistamentosProximos({
-    required LocationModel localizacao,
-    double raioKm = 10.0,
-    String? petId,
-  }) async {
+  // Carregar localizações de um pet
+  Future<void> loadPetLocations(String petId) async {
     try {
-      // Esta é uma implementação simplificada
-      // Em produção, você usaria Geohashes ou Firebase Geoqueries
-      
+      _setLoading(true);
+      _error = null;
+
       final snapshot = await _firestore
-          .collection('avistamentos')
+          .collection('pet_locations')
           .where('petId', isEqualTo: petId)
+          .orderBy('timestamp', descending: true)
           .get();
 
-      final todosAvistamentos = snapshot.docs
-          .map((doc) => LocationModel.fromFirestore(doc.data()))
-          .toList();
-
-      // Filtrar por distância
-      return todosAvistamentos.where((avistamento) {
-        final distancia = _calculateDistance(
-          localizacao.latitude,
-          localizacao.longitude,
-          avistamento.latitude,
-          avistamento.longitude,
-        );
-        return distancia <= raioKm;
+      final locations = snapshot.docs.map((doc) {
+        return LocationModel.fromFirestore(doc.data(), doc.id);
       }).toList();
+
+      _petLocations[petId] = locations;
+      
+      _setLoading(false);
+      notifyListeners();
     } catch (e) {
-      _error = 'Erro ao buscar avistamentos próximos: $e';
-      return [];
+      _error = 'Erro ao carregar localizações: $e';
+      _setLoading(false);
+      notifyListeners();
     }
   }
 
-  // Calcular distância entre dois pontos
-  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-    const earthRadius = 6371.0;
+  // Calcular distância entre duas localizações
+  double calculateDistance(LocationModel loc1, LocationModel loc2) {
+    const earthRadius = 6371.0; // km
 
-    final dLat = _degreesToRadians(lat2 - lat1);
-    final dLon = _degreesToRadians(lon2 - lon1);
+    final lat1 = _degreesToRadians(loc1.latitude);
+    final lon1 = _degreesToRadians(loc1.longitude);
+    final lat2 = _degreesToRadians(loc2.latitude);
+    final lon2 = _degreesToRadians(loc2.longitude);
+
+    final dLat = lat2 - lat1;
+    final dLon = lon2 - lon1;
 
     final a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(_degreesToRadians(lat1)) *
-            cos(_degreesToRadians(lat2)) *
-            sin(dLon / 2) *
-            sin(dLon / 2);
+        cos(lat1) * cos(lat2) * sin(dLon / 2) * sin(dLon / 2);
     
     final c = 2 * atan2(sqrt(a), sqrt(1 - a));
     
@@ -342,99 +248,17 @@ class LocationController with ChangeNotifier {
     return degrees * pi / 180;
   }
 
-  // Buscar endereço por texto
-  Future<List<LocationModel>> buscarEndereco(String query) async {
-    try {
-      if (query.isEmpty) return [];
-
-      final locations = await locationFromAddress(query);
-      
-      return locations.map((location) {
-        return LocationModel(
-          latitude: location.latitude,
-          longitude: location.longitude,
-          endereco: query,
-          timestamp: DateTime.now(),
-        );
-      }).toList();
-    } catch (e) {
-      _error = 'Erro ao buscar endereço: $e';
-      return [];
-    }
+  // Obter localização mais recente do pet
+  LocationModel? getLatestPetLocation(String petId) {
+    final locations = getPetLocations(petId);
+    if (locations.isEmpty) return null;
+    
+    return locations.first;
   }
 
-  // Obter coordenadas por endereço
-  Future<LocationModel?> getCoordenadasPorEndereco(String endereco) async {
-    try {
-      final locations = await locationFromAddress(endereco);
-      
-      if (locations.isNotEmpty) {
-        final location = locations.first;
-        return LocationModel(
-          latitude: location.latitude,
-          longitude: location.longitude,
-          endereco: endereco,
-          timestamp: DateTime.now(),
-        );
-      }
-      return null;
-    } catch (e) {
-      _error = 'Erro ao obter coordenadas: $e';
-      return null;
-    }
-  }
-
-  // Verificar se está dentro de uma área de busca
-  List<AreaBuscaModel> getAreasBuscaProximas() {
-    if (_currentLocation == null) return [];
-
-    return _areasBusca.where((area) {
-      return area.containsLocation(_currentLocation!);
-    }).toList();
-  }
-
-  // Calcular rota entre dois pontos (simplificado)
-  double calcularDistanciaPara(LocationModel destino) {
-    if (_currentLocation == null) return 0.0;
-
-    return _calculateDistance(
-      _currentLocation!.latitude,
-      _currentLocation!.longitude,
-      destino.latitude,
-      destino.longitude,
-    );
-  }
-
-  // Obter direções (URL para apps externos)
-  String getGoogleMapsUrl(LocationModel destino) {
-    return 'https://www.google.com/maps/dir/?api=1'
-           '&origin=${_currentLocation?.latitude},${_currentLocation?.longitude}'
-           '&destination=${destino.latitude},${destino.longitude}'
-           '&travelmode=driving';
-  }
-
-  String getWazeUrl(LocationModel destino) {
-    return 'https://waze.com/ul?ll=${destino.latitude},${destino.longitude}&navigate=yes';
-  }
-
-  // Abrir configurações de localização
-  Future<void> abrirConfiguracoesLocalizacao() async {
-    await Geolocator.openLocationSettings();
-  }
-
-  // Verificar status da localização
-  Future<void> verificarStatusLocalizacao() async {
-    final enabled = await Geolocator.isLocationServiceEnabled();
-    if (enabled != _locationEnabled) {
-      _locationEnabled = enabled;
-      notifyListeners();
-    }
-  }
-
-  // Controlar estado de loading
-  void _setLoading(bool loading) {
-    _isLoading = loading;
-    notifyListeners();
+  // Forçar recarregamento das localizações
+  Future<void> refreshPetLocations(String petId) async {
+    await loadPetLocations(petId);
   }
 
   // Limpar erros
@@ -443,9 +267,10 @@ class LocationController with ChangeNotifier {
     notifyListeners();
   }
 
-  // Forçar recarregamento
-  Future<void> refresh() async {
-    await _initializeLocation();
+  // Controlar estado de loading
+  void _setLoading(bool loading) {
+    _isLoading = loading;
+    notifyListeners();
   }
 
   @override
