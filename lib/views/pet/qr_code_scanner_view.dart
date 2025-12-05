@@ -1,4 +1,3 @@
-// views/qr_code_scanner_view.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -31,8 +30,7 @@ class _QRCodeScannerViewState extends State<QRCodeScannerView> {
     final String? qrData = barcode.barcodes.first.rawValue;
     
     if (qrData != null && qrData.isNotEmpty) {
-      // Aguarda um momento e navega para a tela de informações
-      Future.delayed(Duration(milliseconds: 500), () {
+      Future.delayed(const Duration(milliseconds: 500), () {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -41,9 +39,8 @@ class _QRCodeScannerViewState extends State<QRCodeScannerView> {
         );
       });
     } else {
-      // QR Code inválido
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('QR Code inválido'),
           backgroundColor: Colors.red,
         ),
@@ -58,19 +55,18 @@ class _QRCodeScannerViewState extends State<QRCodeScannerView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Escanear QR Code'),
-        backgroundColor: Color(0xFF1A73E8),
+        title: const Text('Escanear QR Code'),
+        backgroundColor: const Color(0xFF1A73E8),
         foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: ValueListenableBuilder(
-              valueListenable: cameraController.torchState,
+              valueListenable: cameraController.torchState, //erro nessa linha
               builder: (context, state, child) {
-                switch (state) {
-                  case TorchState.off:
-                    return Icon(Icons.flash_off, color: Colors.grey);
-                  case TorchState.on:
-                    return Icon(Icons.flash_on, color: Colors.yellow);
+                if (state == TorchState.off) {
+                  return const Icon(Icons.flash_off, color: Colors.grey);
+                } else {
+                  return const Icon(Icons.flash_on, color: Colors.yellow);
                 }
               },
             ),
@@ -78,13 +74,12 @@ class _QRCodeScannerViewState extends State<QRCodeScannerView> {
           ),
           IconButton(
             icon: ValueListenableBuilder(
-              valueListenable: cameraController.cameraFacingState,
+              valueListenable: cameraController.cameraFacingState, //erro nessa linha
               builder: (context, state, child) {
-                switch (state) {
-                  case CameraFacing.front:
-                    return Icon(Icons.camera_front);
-                  case CameraFacing.back:
-                    return Icon(Icons.camera_rear);
+                if (state == CameraFacing.front) {
+                  return const Icon(Icons.camera_front);
+                } else {
+                  return const Icon(Icons.camera_rear);
                 }
               },
             ),
@@ -98,18 +93,16 @@ class _QRCodeScannerViewState extends State<QRCodeScannerView> {
             controller: cameraController,
             onDetect: _onBarcodeDetected,
           ),
-          // Overlay do scanner
           _buildScannerOverlay(),
-          // Instruções
           Positioned(
             bottom: 50,
             left: 0,
             right: 0,
             child: Container(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  Text(
+                  const Text(
                     'Posicione o QR Code dentro da área de leitura',
                     style: TextStyle(
                       color: Colors.white,
@@ -117,7 +110,7 @@ class _QRCodeScannerViewState extends State<QRCodeScannerView> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     'O QR Code será escaneado automaticamente',
                     style: TextStyle(
@@ -140,7 +133,7 @@ class _QRCodeScannerViewState extends State<QRCodeScannerView> {
         height: 250,
         decoration: BoxDecoration(
           border: Border.all(
-            color: Color(0xFF1A73E8),
+            color: const Color(0xFF1A73E8),
             width: 2,
           ),
           borderRadius: BorderRadius.circular(12),

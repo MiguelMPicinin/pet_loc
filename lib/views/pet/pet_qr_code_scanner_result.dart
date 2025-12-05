@@ -1,4 +1,3 @@
-// views/pet_qr_code_info_view.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:pet_loc/controller/locationController.dart';
@@ -16,7 +15,7 @@ class PetQRCodeInfoView extends StatefulWidget {
 }
 
 class _PetQRCodeInfoViewState extends State<PetQRCodeInfoView> {
-  late PetModel _pet;
+  PetModel? _pet;
   bool _isLoading = true;
   bool _sharingLocation = false;
   bool _locationShared = false;
@@ -34,13 +33,25 @@ class _PetQRCodeInfoViewState extends State<PetQRCodeInfoView> {
   void _decodeQRData() {
     try {
       final data = json.decode(widget.qrData);
-      _pet = PetModel.fromJson(data);
+      
+      // CORREÇÃO: Criar PetModel com o construtor correto
+      _pet = PetModel(
+        id: data['id']?.toString() ?? '',
+        nome: data['nome'] ?? 'Pet',
+        descricao: data['descricao'] ?? '',
+        contato: data['contato'] ?? '',
+        imagemBase64: data['imagemBase64'],
+        userId: data['userId'] ?? '', // Campo obrigatório
+        criadoEm: DateTime.now(),
+        atualizadoEm: DateTime.now(),
+      );
+      
       setState(() {
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'QR Code inválido ou corrompido';
+        _errorMessage = 'QR Code inválido ou corrompido: $e';
         _isLoading = false;
       });
     }
@@ -54,6 +65,13 @@ class _PetQRCodeInfoViewState extends State<PetQRCodeInfoView> {
       return;
     }
 
+    if (_pet == null || _pet!.id == null) {
+      setState(() {
+        _errorMessage = 'Pet não encontrado';
+      });
+      return;
+    }
+
     setState(() {
       _sharingLocation = true;
       _errorMessage = '';
@@ -62,16 +80,14 @@ class _PetQRCodeInfoViewState extends State<PetQRCodeInfoView> {
     try {
       final locationController = Provider.of<LocationController>(context, listen: false);
       
-      // Obter localização atual
       final location = await locationController.getCurrentLocationWithAddress();
       
       if (location == null) {
         throw Exception('Não foi possível obter a localização');
       }
 
-      // Salvar localização do pet
       final success = await locationController.savePetLocation(
-        petId: _pet.id,
+        petId: _pet!.id!, // Usar o ID do pet
         location: location,
         encontradoPor: _nomeController.text,
         telefoneEncontrado: _telefoneController.text,
@@ -83,18 +99,16 @@ class _PetQRCodeInfoViewState extends State<PetQRCodeInfoView> {
           _locationShared = true;
         });
 
-        // Mostrar mensagem de sucesso
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('Localização compartilhada com sucesso!'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 3),
           ),
         );
 
-        // Esperar um pouco e voltar
-        await Future.delayed(Duration(seconds: 2));
-        Navigator.of(context).pop();
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) Navigator.of(context).pop();
       } else {
         throw Exception('Erro ao salvar localização');
       }
@@ -111,35 +125,34 @@ class _PetQRCodeInfoViewState extends State<PetQRCodeInfoView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Pet Encontrado'),
-        backgroundColor: Color(0xFF1A73E8),
+        title: const Text('Pet Encontrado'),
+        backgroundColor: const Color(0xFF1A73E8),
         foregroundColor: Colors.white,
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : _errorMessage.isNotEmpty
-              ? Center(child: Text(_errorMessage))
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage.isNotEmpty || _pet == null
+              ? Center(child: Text(_errorMessage.isEmpty ? 'Pet não encontrado' : _errorMessage))
               : SingleChildScrollView(
-                  padding: EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Cabeçalho informativo
                       Container(
-                        padding: EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Color(0xFF1A73E8).withOpacity(0.1),
+                          color: const Color(0xFF1A73E8).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.info, color: Color(0xFF1A73E8)),
-                            SizedBox(width: 12),
+                            const Icon(Icons.info, color: Color(0xFF1A73E8)),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Text(
                                 'Você encontrou um pet! Ajude o dono a localizá-lo compartilhando sua localização.',
                                 style: TextStyle(
-                                  color: Color(0xFF1A73E8),
+                                  color: const Color(0xFF1A73E8),
                                   fontSize: 14,
                                 ),
                               ),
@@ -148,20 +161,19 @@ class _PetQRCodeInfoViewState extends State<PetQRCodeInfoView> {
                         ),
                       ),
                       
-                      SizedBox(height: 24),
+                      const SizedBox(height: 24),
                       
-                      // Informações do Pet
                       Card(
                         elevation: 4,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Padding(
-                          padding: EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(16),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
+                              const Text(
                                 'Informações do Pet',
                                 style: TextStyle(
                                   fontSize: 18,
@@ -169,9 +181,9 @@ class _PetQRCodeInfoViewState extends State<PetQRCodeInfoView> {
                                   color: Color(0xFF1A73E8),
                                 ),
                               ),
-                              SizedBox(height: 16),
+                              const SizedBox(height: 16),
                               
-                              if (_pet.imagemBase64 != null && _pet.imagemBase64!.isNotEmpty)
+                              if (_pet!.imagemBase64 != null && _pet!.imagemBase64!.isNotEmpty)
                                 Center(
                                   child: Container(
                                     width: 150,
@@ -179,28 +191,28 @@ class _PetQRCodeInfoViewState extends State<PetQRCodeInfoView> {
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(75),
                                       border: Border.all(
-                                        color: Color(0xFF1A73E8),
+                                        color: const Color(0xFF1A73E8),
                                         width: 2,
                                       ),
                                       image: DecorationImage(
-                                        image: MemoryImage(base64.decode(_pet.imagemBase64!)),
+                                        image: MemoryImage(base64.decode(_pet!.imagemBase64!)),
                                         fit: BoxFit.cover,
                                       ),
                                     ),
                                   ),
                                 ),
                               
-                              SizedBox(height: 16),
+                              const SizedBox(height: 16),
                               
-                              _buildInfoItem('Nome', _pet.nome, Icons.pets),
-                              _buildInfoItem('Descrição', _pet.descricao, Icons.description),
-                              _buildInfoItem('Contato do Dono', _pet.contato, Icons.phone),
+                              _buildInfoItem('Nome', _pet!.nome, Icons.pets),
+                              _buildInfoItem('Descrição', _pet!.descricao, Icons.description),
+                              _buildInfoItem('Contato do Dono', _pet!.contato, Icons.phone),
                               
-                              SizedBox(height: 24),
+                              const SizedBox(height: 24),
                               
                               if (_locationShared)
                                 Container(
-                                  padding: EdgeInsets.all(16),
+                                  padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
                                     color: Colors.green.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(8),
@@ -208,12 +220,12 @@ class _PetQRCodeInfoViewState extends State<PetQRCodeInfoView> {
                                   ),
                                   child: Row(
                                     children: [
-                                      Icon(Icons.check_circle, color: Colors.green),
-                                      SizedBox(width: 8),
+                                      const Icon(Icons.check_circle, color: Colors.green),
+                                      const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
                                           'Localização compartilhada com sucesso!\nO dono já foi notificado.',
-                                          style: TextStyle(color: Colors.green),
+                                          style: const TextStyle(color: Colors.green),
                                         ),
                                       ),
                                     ],
@@ -222,14 +234,14 @@ class _PetQRCodeInfoViewState extends State<PetQRCodeInfoView> {
                               else
                                 Column(
                                   children: [
-                                    Text(
+                                    const Text(
                                       'Compartilhar Localização',
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    SizedBox(height: 8),
+                                    const SizedBox(height: 8),
                                     Text(
                                       'Preencha seus dados para que o dono possa entrar em contato',
                                       style: TextStyle(
@@ -238,23 +250,22 @@ class _PetQRCodeInfoViewState extends State<PetQRCodeInfoView> {
                                       ),
                                       textAlign: TextAlign.center,
                                     ),
-                                    SizedBox(height: 16),
+                                    const SizedBox(height: 16),
                                     
-                                    // Campos de formulário
                                     TextField(
                                       controller: _nomeController,
-                                      decoration: InputDecoration(
+                                      decoration: const InputDecoration(
                                         labelText: 'Seu nome',
                                         border: OutlineInputBorder(),
                                         prefixIcon: Icon(Icons.person),
                                       ),
                                     ),
                                     
-                                    SizedBox(height: 12),
+                                    const SizedBox(height: 12),
                                     
                                     TextField(
                                       controller: _telefoneController,
-                                      decoration: InputDecoration(
+                                      decoration: const InputDecoration(
                                         labelText: 'Seu telefone',
                                         border: OutlineInputBorder(),
                                         prefixIcon: Icon(Icons.phone),
@@ -262,33 +273,33 @@ class _PetQRCodeInfoViewState extends State<PetQRCodeInfoView> {
                                       keyboardType: TextInputType.phone,
                                     ),
                                     
-                                    SizedBox(height: 16),
+                                    const SizedBox(height: 16),
                                     
                                     if (_errorMessage.isNotEmpty)
                                       Container(
-                                        padding: EdgeInsets.all(12),
+                                        padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
                                           color: Colors.red.withOpacity(0.1),
                                           borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Row(
                                           children: [
-                                            Icon(Icons.error, color: Colors.red),
-                                            SizedBox(width: 8),
+                                            const Icon(Icons.error, color: Colors.red),
+                                            const SizedBox(width: 8),
                                             Expanded(
                                               child: Text(
                                                 _errorMessage,
-                                                style: TextStyle(color: Colors.red),
+                                                style: const TextStyle(color: Colors.red),
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
                                     
-                                    SizedBox(height: 16),
+                                    const SizedBox(height: 16),
                                     
                                     _sharingLocation
-                                        ? Center(
+                                        ? const Center(
                                             child: Column(
                                               children: [
                                                 CircularProgressIndicator(),
@@ -300,13 +311,13 @@ class _PetQRCodeInfoViewState extends State<PetQRCodeInfoView> {
                                         : ElevatedButton(
                                             onPressed: _shareLocation,
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: Color(0xFF1A73E8),
-                                              minimumSize: Size(double.infinity, 50),
+                                              backgroundColor: const Color(0xFF1A73E8),
+                                              minimumSize: const Size(double.infinity, 50),
                                               shape: RoundedRectangleBorder(
                                                 borderRadius: BorderRadius.circular(12),
                                               ),
                                             ),
-                                            child: Row(
+                                            child: const Row(
                                               mainAxisAlignment: MainAxisAlignment.center,
                                               children: [
                                                 Icon(Icons.location_on, color: Colors.white),
@@ -323,13 +334,13 @@ class _PetQRCodeInfoViewState extends State<PetQRCodeInfoView> {
                                             ),
                                           ),
                                     
-                                    SizedBox(height: 8),
+                                    const SizedBox(height: 8),
                                     
                                     TextButton(
                                       onPressed: () {
                                         Navigator.of(context).pop();
                                       },
-                                      child: Text('Não compartilhar localização'),
+                                      child: const Text('Não compartilhar localização'),
                                     ),
                                   ],
                                 ),
@@ -345,12 +356,12 @@ class _PetQRCodeInfoViewState extends State<PetQRCodeInfoView> {
 
   Widget _buildInfoItem(String label, String value, IconData icon) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Color(0xFF1A73E8), size: 20),
-          SizedBox(width: 12),
+          Icon(icon, color: const Color(0xFF1A73E8), size: 20),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -363,10 +374,10 @@ class _PetQRCodeInfoViewState extends State<PetQRCodeInfoView> {
                     fontSize: 14,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
                   value,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),

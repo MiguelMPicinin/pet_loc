@@ -1,12 +1,11 @@
-// views/localizacao_pet_view.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:pet_loc/controller/locationController.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:pet_loc/controller/locationController.dart';
 import 'package:pet_loc/models/location_model.dart';
 
 class LocalizacaoPetView extends StatefulWidget {
@@ -20,59 +19,133 @@ class LocalizacaoPetView extends StatefulWidget {
 
 class _LocalizacaoPetViewState extends State<LocalizacaoPetView> {
   late MapController _mapController;
-  List<Marker> _markers = [];
-  LatLng? _center;
   bool _isLoading = true;
+  List<LocationModel> _locations = [];
+  LocationModel? _latestLocation;
+  LatLngBounds? _bounds;
+  
+  LatLng? _currentUserLocation;
+  StreamSubscription<Position>? _positionStreamSubscription;
+  
+  double _currentZoom = 15.0;
 
   @override
   void initState() {
     super.initState();
     _mapController = MapController();
     _loadLocations();
+    _startLocationUpdates();
   }
 
   Future<void> _loadLocations() async {
-    final locationController = Provider.of<LocationController>(context, listen: false);
-    await locationController.loadPetLocations(widget.petId);
-    
-    final locations = locationController.getPetLocations(widget.petId);
-    
-    if (locations.isNotEmpty) {
-      final latest = locations.first;
-      _center = LatLng(latest.latitude, latest.longitude);
-      _createMarkers(locations);
+    try {
+      final locationController = Provider.of<LocationController>(context, listen: false);
+      await locationController.loadPetLocations(widget.petId);
+      
+      final locations = locationController.getPetLocations(widget.petId);
+      
+      setState(() {
+        _locations = locations;
+        if (locations.isNotEmpty) {
+          _latestLocation = locations.first;
+          
+          if (locations.isNotEmpty || _currentUserLocation != null) {
+            double minLat = locations.isNotEmpty ? locations.first.latitude : _currentUserLocation!.latitude;
+            double maxLat = locations.isNotEmpty ? locations.first.latitude : _currentUserLocation!.latitude;
+            double minLng = locations.isNotEmpty ? locations.first.longitude : _currentUserLocation!.longitude;
+            double maxLng = locations.isNotEmpty ? locations.first.longitude : _currentUserLocation!.longitude;
+            
+            for (var location in locations) {
+              minLat = location.latitude < minLat ? location.latitude : minLat;
+              maxLat = location.latitude > maxLat ? location.latitude : maxLat;
+              minLng = location.longitude < minLng ? location.longitude : minLng;
+              maxLng = location.longitude > maxLng ? location.longitude : maxLng;
+            }
+            
+            if (_currentUserLocation != null) {
+              minLat = _currentUserLocation!.latitude < minLat ? _currentUserLocation!.latitude : minLat;
+              maxLat = _currentUserLocation!.latitude > maxLat ? _currentUserLocation!.latitude : maxLat;
+              minLng = _currentUserLocation!.longitude < minLng ? _currentUserLocation!.longitude : minLng;
+              maxLng = _currentUserLocation!.longitude > maxLng ? _currentUserLocation!.longitude : maxLng;
+            }
+            
+            _bounds = LatLngBounds(
+              LatLng(minLat, minLng),
+              LatLng(maxLat, maxLng),
+            );
+          }
+          
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_bounds != null) {
+              _mapController.fitBounds(
+                _bounds!,
+                options: FitBoundsOptions(
+                  padding: EdgeInsets.all(50),
+                  maxZoom: 15.0,
+                ),
+              );
+            }
+          });
+        }
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Erro ao carregar localizações: $e');
+      setState(() {
+        _isLoading = false;
+      });
     }
-    
-    setState(() {
-      _isLoading = false;
-    });
   }
 
-  void _createMarkers(List<LocationModel> locations) {
-    _markers = locations.asMap().entries.map((entry) {
-      final index = entry.key;
-      final location = entry.value;
-      
-      final isLatest = index == 0;
-      
-      return Marker(
-        width: 40.0,
-        height: 40.0,
-        point: LatLng(location.latitude, location.longitude),
-        builder: (ctx) => GestureDetector(
-          onTap: () {
-            _showLocationDetails(context, location, isLatest);
-          },
-          child: Container(
-            child: Icon(
-              Icons.location_on,
-              color: isLatest ? Colors.red : Color(0xFF1A73E8),
-              size: 40,
-            ),
-          ),
-        ),
+  Future<void> _startLocationUpdates() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission != LocationPermission.whileInUse && 
+            permission != LocationPermission.always) {
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
       );
-    }).toList();
+
+      setState(() {
+        _currentUserLocation = LatLng(
+          position.latitude,
+          position.longitude,
+        );
+      });
+
+      _positionStreamSubscription = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 10,
+        ),
+      ).listen((Position position) {
+        if (position.latitude != null && position.longitude != null) {
+          setState(() {
+            _currentUserLocation = LatLng(
+              position.latitude,
+              position.longitude,
+            );
+          });
+        }
+      });
+    } catch (e) {
+      print('Erro ao obter localização: $e');
+    }
   }
 
   void _showLocationDetails(BuildContext context, LocationModel location, bool isLatest) {
@@ -87,20 +160,20 @@ class _LocalizacaoPetViewState extends State<LocalizacaoPetView> {
             children: [
               if (location.encontradoPor != null) ...[
                 Text('Encontrado por: ${location.encontradoPor}',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                SizedBox(height: 8),
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
               ],
               if (location.telefoneEncontrado != null) ...[
                 Text('Telefone: ${location.telefoneEncontrado}'),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
               ],
               if (location.endereco != null) ...[
                 Text('Endereço: ${location.endereco}'),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
               ],
               Text('Latitude: ${location.latitude.toStringAsFixed(6)}'),
               Text('Longitude: ${location.longitude.toStringAsFixed(6)}'),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text('Data: ${_formatDateTime(location.effectiveTimestamp)}'),
             ],
           ),
@@ -108,14 +181,14 @@ class _LocalizacaoPetViewState extends State<LocalizacaoPetView> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Fechar'),
+            child: const Text('Fechar'),
           ),
           ElevatedButton(
             onPressed: () => _openInMaps(location),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF1A73E8),
+              backgroundColor: const Color(0xFF1A73E8),
             ),
-            child: Text('Abrir no Maps'),
+            child: const Text('Abrir no Maps'),
           ),
         ],
       ),
@@ -129,16 +202,12 @@ class _LocalizacaoPetViewState extends State<LocalizacaoPetView> {
       await launch(url);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Não foi possível abrir o mapa'),
           backgroundColor: Colors.red,
         ),
       );
     }
-  }
-
-  String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
   Future<void> _refreshLocations() async {
@@ -149,213 +218,357 @@ class _LocalizacaoPetViewState extends State<LocalizacaoPetView> {
     await _loadLocations();
   }
 
+  String _formatDateTime(DateTime dateTime) {
+    return '${dateTime.day.toString().padLeft(2, '0')}/${dateTime.month.toString().padLeft(2, '0')}/${dateTime.year} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+
+  List<Marker> _buildMarkers() {
+    final markers = <Marker>[];
+    
+    if (_currentUserLocation != null) {
+      markers.add(
+        Marker(
+          width: 50.0,
+          height: 50.0,
+          point: _currentUserLocation!,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: const Icon(
+                  Icons.person_pin_circle,
+                  color: Colors.white,
+                  size: 30,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Text(
+                  'Você está aqui',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    markers.addAll(_locations.asMap().entries.map((entry) {
+      final index = entry.key;
+      final location = entry.value;
+      final isLatest = index == 0;
+      
+      return Marker(
+        width: 40.0,
+        height: 40.0,
+        point: LatLng(location.latitude, location.longitude),
+        child: GestureDetector(
+          onTap: () => _showLocationDetails(context, location, isLatest),
+          child: Column(
+            children: [
+              Icon(
+                Icons.pets,
+                color: isLatest ? Colors.red : const Color(0xFF1A73E8),
+                size: 40.0,
+              ),
+              if (isLatest)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'ÚLTIMA',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    }));
+
+    return markers;
+  }
+
+  void _centerOnUserLocation() {
+    if (_currentUserLocation != null) {
+      _mapController.move(_currentUserLocation!, _currentZoom);
+    }
+  }
+
+  void _centerOnPetLocation() {
+    if (_latestLocation != null) {
+      _mapController.move(
+        LatLng(_latestLocation!.latitude, _latestLocation!.longitude),
+        _currentZoom,
+      );
+    }
+  }
+
+  void _showAllLocations() {
+    if (_bounds != null) {
+      _mapController.fitBounds(
+        _bounds!,
+        options: FitBoundsOptions(
+          padding: EdgeInsets.all(50),
+          maxZoom: 15.0,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Localização do Pet'),
-        backgroundColor: Color(0xFF1A73E8),
+        title: const Text('Localização do Pet'),
+        backgroundColor: const Color(0xFF1A73E8),
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh),
             onPressed: _refreshLocations,
+            tooltip: 'Atualizar localizações',
           ),
         ],
       ),
-      body: Consumer<LocationController>(
-        builder: (context, controller, child) {
-          if (_isLoading || controller.isLoading) {
-            return Center(child: CircularProgressIndicator());
-          }
-
-          if (controller.error != null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error, size: 64, color: Colors.red),
-                  SizedBox(height: 16),
-                  Text(
-                    'Erro: ${controller.error}',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _refreshLocations,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF1A73E8),
-                    ),
-                    child: Text('Tentar novamente'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          final locations = controller.getPetLocations(widget.petId);
-          
-          if (locations.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.location_off, size: 80, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text(
-                    'Nenhuma localização registrada',
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Compartilhe o QR Code do pet para receber localizações',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          final latestLocation = locations.first;
-          
-          return Column(
-            children: [
-              Expanded(
-                child: FlutterMap(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Stack(
+              children: [
+                FlutterMap(
                   mapController: _mapController,
                   options: MapOptions(
-                    center: _center ?? LatLng(-23.5505, -46.6333), // São Paulo como fallback
-                    zoom: _center != null ? 14.0 : 10.0,
+                    center: _currentUserLocation ?? 
+                           (_latestLocation != null 
+                               ? LatLng(_latestLocation!.latitude, _latestLocation!.longitude)
+                               : const LatLng(-23.5505, -46.6333)),
+                    zoom: _currentZoom,
+                    maxZoom: 18.0,
+                    minZoom: 1.0,
+                    interactiveFlags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+                    onPositionChanged: (position, hasGesture) {
+                      setState(() {
+                        _currentZoom = position.zoom!;
+                      });
+                    },
                   ),
                   children: [
                     TileLayer(
-                      urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      subdomains: ['a', 'b', 'c'],
-                      userAgentPackageName: 'com.example.pet_loc',
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.petloc.app',
                     ),
-                    MarkerLayer(
-                      markers: _markers,
-                    ),
+                    MarkerLayer(markers: _buildMarkers()),
                   ],
                 ),
-              ),
-              Container(
-                height: 180,
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border(top: BorderSide(color: Colors.grey[300]!)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Últimas localizações:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A73E8),
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Expanded(
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: locations.length,
-                        itemBuilder: (context, index) {
-                          final loc = locations[index];
-                          return _buildLocationCard(loc, index == 0);
+                Positioned(
+                  top: 16,
+                  right: 16,
+                  child: Column(
+                    children: [
+                      FloatingActionButton.small(
+                        heroTag: 'btn_zoom_in',
+                        onPressed: () {
+                          setState(() {
+                            _currentZoom += 1;
+                          });
+                          _mapController.move(_mapController.center, _currentZoom);
                         },
+                        backgroundColor: Colors.white,
+                        child: const Icon(Icons.add, color: Color(0xFF1A73E8)),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      FloatingActionButton.small(
+                        heroTag: 'btn_zoom_out',
+                        onPressed: () {
+                          setState(() {
+                            _currentZoom -= 1;
+                          });
+                          _mapController.move(_mapController.center, _currentZoom);
+                        },
+                        backgroundColor: Colors.white,
+                        child: const Icon(Icons.remove, color: Color(0xFF1A73E8)),
+                      ),
+                      const SizedBox(height: 8),
+                      FloatingActionButton.small(
+                        heroTag: 'btn_center_user',
+                        onPressed: _centerOnUserLocation,
+                        backgroundColor: Colors.white,
+                        child: const Icon(Icons.my_location, color: Color(0xFF1A73E8)),
+                        tooltip: 'Centralizar em mim',
+                      ),
+                      if (_latestLocation != null) ...[
+                        const SizedBox(height: 8),
+                        FloatingActionButton.small(
+                          heroTag: 'btn_center_pet',
+                          onPressed: _centerOnPetLocation,
+                          backgroundColor: Colors.white,
+                          child: const Icon(Icons.pets, color: Color(0xFF1A73E8)),
+                          tooltip: 'Centralizar no pet',
+                        ),
+                      ],
+                      if (_bounds != null) ...[
+                        const SizedBox(height: 8),
+                        FloatingActionButton.small(
+                          heroTag: 'btn_show_all',
+                          onPressed: _showAllLocations,
+                          backgroundColor: Colors.white,
+                          child: const Icon(Icons.zoom_out_map, color: Color(0xFF1A73E8)),
+                          tooltip: 'Mostrar todas as localizações',
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          if (_center != null) {
-            _mapController.move(_center!, 14.0);
-          }
-        },
-        backgroundColor: Color(0xFF1A73E8),
-        child: Icon(Icons.my_location, color: Colors.white),
-      ),
+                Positioned(
+                  bottom: 16,
+                  left: 16,
+                  right: 16,
+                  child: _buildInfoCard(),
+                ),
+              ],
+            ),
+      floatingActionButton: _latestLocation != null
+          ? FloatingActionButton(
+              onPressed: () => _openInMaps(_latestLocation!),
+              backgroundColor: const Color(0xFF1A73E8),
+              child: const Icon(Icons.open_in_browser, color: Colors.white),
+              tooltip: 'Abrir no Maps',
+            )
+          : null,
     );
   }
 
-  Widget _buildLocationCard(LocationModel location, bool isLatest) {
-    return GestureDetector(
-      onTap: () {
-        _mapController.move(LatLng(location.latitude, location.longitude), 16.0);
-      },
+  Widget _buildInfoCard() {
+    return Card(
+      elevation: 8,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Container(
-        width: 200,
-        margin: EdgeInsets.only(right: 12),
-        padding: EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isLatest ? Color(0xFF1A73E8).withOpacity(0.1) : Colors.grey[100],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isLatest ? Color(0xFF1A73E8) : Colors.grey[300],
-          ),
-        ),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisSize: MainAxisSize.min,
           children: [
+            const Text(
+              'Informações do Mapa',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1A73E8),
+              ),
+            ),
+            const SizedBox(height: 8),
             Row(
               children: [
-                Icon(
-                  Icons.location_on,
-                  color: isLatest ? Color(0xFF1A73E8) : Colors.grey,
-                  size: 16,
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: Colors.blue,
+                    shape: BoxShape.circle,
+                  ),
                 ),
-                SizedBox(width: 4),
-                Text(
-                  isLatest ? 'MAIS RECENTE' : 'ANTERIOR',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: isLatest ? Color(0xFF1A73E8) : Colors.grey,
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Sua localização atual',
+                    style: TextStyle(fontSize: 14),
                   ),
                 ),
               ],
             ),
-            SizedBox(height: 8),
-            if (location.encontradoPor != null) ...[
-              Text(
-                location.encontradoPor!,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Última localização do pet',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: Color(0xFF1A73E8),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Localizações anteriores do pet',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+            if (_currentUserLocation != null) ...[
+              const SizedBox(height: 8),
+              Divider(),
+              const SizedBox(height: 8),
+              Text(
+                'Sua localização atual:',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
               ),
-              SizedBox(height: 4),
+              Text(
+                'Lat: ${_currentUserLocation!.latitude.toStringAsFixed(6)}',
+                style: TextStyle(fontSize: 12),
+              ),
+              Text(
+                'Lng: ${_currentUserLocation!.longitude.toStringAsFixed(6)}',
+                style: TextStyle(fontSize: 12),
+              ),
             ],
-            Text(
-              location.endereco ?? 'Coordenadas: ${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}',
-              style: TextStyle(
-                fontSize: 12,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            SizedBox(height: 4),
-            Text(
-              'Data: ${_formatDateTime(location.effectiveTimestamp)}',
-              style: TextStyle(fontSize: 10, color: Colors.grey),
-            ),
           ],
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _positionStreamSubscription?.cancel();
+    super.dispose();
   }
 }

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:pet_loc/controller/petController.dart';
 import 'package:pet_loc/models/pet_model.dart';
 import 'package:pet_loc/services/app_routes.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:intl/intl.dart';
 
 class PetCRUDView extends StatefulWidget {
   final PetModel pet;
@@ -20,7 +22,6 @@ class _PetCRUDViewState extends State<PetCRUDView> {
   final TextEditingController _contatoController = TextEditingController();
   final PetController _controller = PetController();
 
-  // Limites de caracteres
   static const int _limiteNome = 30;
   static const int _limiteDescricao = 150;
   static const int _limiteContato = 15;
@@ -84,7 +85,6 @@ class _PetCRUDViewState extends State<PetCRUDView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Imagem do Pet
                   Center(
                     child: Container(
                       width: 200,
@@ -113,7 +113,6 @@ class _PetCRUDViewState extends State<PetCRUDView> {
 
                   const SizedBox(height: 24),
 
-                  // Formulário de edição
                   _buildEditableField(
                     label: 'Nome',
                     controller: _nomeController,
@@ -150,15 +149,12 @@ class _PetCRUDViewState extends State<PetCRUDView> {
 
                   const SizedBox(height: 24),
 
-                  // Informações adicionais
                   _buildInfoSection(),
 
                   const SizedBox(height: 24),
 
-                  // QR Code Section
                   _buildQRCodeSection(),
 
-                  // Exibir erro se houver
                   if (_error != null) ...[
                     const SizedBox(height: 16),
                     Container(
@@ -254,7 +250,7 @@ class _PetCRUDViewState extends State<PetCRUDView> {
             Icon(Icons.qr_code, color: Colors.white),
             SizedBox(width: 8),
             Text(
-              'Gerar QR Code',
+              'Gerar QR Code Universal',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -267,7 +263,11 @@ class _PetCRUDViewState extends State<PetCRUDView> {
       const SizedBox(height: 12),
       OutlinedButton(
         onPressed: () {
-          Navigator.pushNamed(context, AppRoutes.localizacaoPet);
+          Navigator.pushNamed(
+            context,
+            AppRoutes.localizacaoPet,
+            arguments: widget.pet.id!,
+          );
         },
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(double.infinity, 50),
@@ -300,7 +300,7 @@ class _PetCRUDViewState extends State<PetCRUDView> {
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300] ?? Colors.grey),
+        border: Border.all(color: Colors.grey[300]!),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -338,6 +338,9 @@ class _PetCRUDViewState extends State<PetCRUDView> {
   }
 
   Widget _buildQRCodeSection() {
+    // Gerar URL para página web
+    final webUrl = 'https://miguelmpicinin.github.io/Informacoes_Pet/';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -348,7 +351,7 @@ class _PetCRUDViewState extends State<PetCRUDView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'QR Code de Localização',
+            '🔗 QR Code Universal',
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 16,
@@ -357,13 +360,14 @@ class _PetCRUDViewState extends State<PetCRUDView> {
           ),
           const SizedBox(height: 12),
           const Text(
-            'Ao escanear este QR Code, outras pessoas poderão:',
+            'Este QR Code pode ser escaneado por QUALQUER smartphone:',
             style: TextStyle(fontSize: 14),
           ),
           const SizedBox(height: 8),
-          _buildFeatureItem('Ver informações de contato'),
-          _buildFeatureItem('Enviar localização atual'),
-          _buildFeatureItem('Reportar pet encontrado'),
+          _buildFeatureItem('✅ Com qualquer app leitor de QR Code'),
+          _buildFeatureItem('✅ Não precisa ter este app instalado'),
+          _buildFeatureItem('✅ Abre página web com informações'),
+          _buildFeatureItem('✅ Permite compartilhar localização'),
           const SizedBox(height: 16),
           Container(
             width: double.infinity,
@@ -375,16 +379,49 @@ class _PetCRUDViewState extends State<PetCRUDView> {
             ),
             child: Column(
               children: [
-                Icon(Icons.qr_code_scanner, size: 60, color: Color(0xFF1A73E8)),
+                QrImageView(
+                  data: webUrl,
+                  version: QrVersions.auto,
+                  size: 180,
+                  backgroundColor: Colors.white,
+                ),
                 const SizedBox(height: 12),
-                const Text(
-                  'QR Code Pronto para Uso',
-                  style: TextStyle(
+                Text(
+                  'QR Code Universal para ${widget.pet.nome}',
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1A73E8),
                   ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Gerado em: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'URL: ${webUrl.substring(0, 40)}...',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: _copyWebLink,
+            icon: const Icon(Icons.link),
+            label: const Text('Copiar Link Web'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              minimumSize: const Size(double.infinity, 45),
             ),
           ),
         ],
@@ -397,10 +434,21 @@ class _PetCRUDViewState extends State<PetCRUDView> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Icon(Icons.check_circle, size: 16, color: Color(0xFF1A73E8)),
+          const Icon(Icons.check_circle, size: 16, color: Colors.green),
           const SizedBox(width: 8),
           Expanded(child: Text(text)),
         ],
+      ),
+    );
+  }
+
+  void _copyWebLink() {
+    final webUrl = 'https://miguelmpicinin.github.io/Informacoes_Pet/';
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Link do ${widget.pet.nome} copiado!'),
+        backgroundColor: Colors.green,
       ),
     );
   }
@@ -414,7 +462,7 @@ class _PetCRUDViewState extends State<PetCRUDView> {
   void _cancelEditing() {
     setState(() {
       _isEditing = false;
-      _loadPetData(); // Restaura os valores originais
+      _loadPetData();
     });
   }
 
@@ -554,12 +602,141 @@ class _PetCRUDViewState extends State<PetCRUDView> {
   }
 
   void _generateQRCode() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('QR Code gerado para ${widget.pet.nome}'),
-        backgroundColor: Colors.green,
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('QR Code Universal - ${widget.pet.nome}'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: _buildQRCodeContent(),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '🔗 Link Web Público:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A73E8),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildQRCodeInfoItem('ID do Pet', widget.pet.id ?? 'N/A'),
+                    _buildQRCodeInfoItem('Nome', widget.pet.nome),
+                    _buildQRCodeInfoItem('Contato', widget.pet.contato),
+                    _buildQRCodeInfoItem('Data de Geração', 
+                      DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Fechar'),
+          ),
+          ElevatedButton.icon(
+            onPressed: _saveQRCodeImage,
+            icon: const Icon(Icons.download),
+            label: const Text('Salvar QR Code'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1A73E8),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  Widget _buildQRCodeContent() {
+    final webUrl = 'https://miguelmpicinin.github.io/Informacoes_Pet/';
+
+    return Column(
+      children: [
+        QrImageView(
+          data: webUrl,
+          version: QrVersions.auto,
+          size: 200,
+          backgroundColor: Colors.white,
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'QR Code para ${widget.pet.nome}',
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Compatível com qualquer leitor de QR Code',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.green[700],
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQRCodeInfoItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _saveQRCodeImage() async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('QR Code de ${widget.pet.nome} copiado!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao salvar QR Code: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Uint8List _decodeBase64(String base64String) {
@@ -577,7 +754,6 @@ class _PetCRUDViewState extends State<PetCRUDView> {
     _nomeController.dispose();
     _descricaoController.dispose();
     _contatoController.dispose();
-    _controller.dispose();
     super.dispose();
   }
-}
+}     

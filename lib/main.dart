@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pet_loc/controller/desaparecidoController.dart';
 import 'package:pet_loc/controller/grupoChatController.dart';
+import 'package:pet_loc/controller/locationController.dart';
 import 'package:pet_loc/controller/lojaController.dart';
 import 'package:pet_loc/controller/petController.dart';
 import 'package:provider/provider.dart';
@@ -34,6 +35,7 @@ class MainApp extends StatelessWidget {
         ChangeNotifierProvider(create: (context) => DesaparecidosController()),
         ChangeNotifierProvider(create: (context) => GroupChatController()),
         ChangeNotifierProvider(create: (context)=> LojaController()),
+        ChangeNotifierProvider(create: (context) => LocationController())
       ],
       child: MaterialApp(
         title: 'PetLoc',

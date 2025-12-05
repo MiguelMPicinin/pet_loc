@@ -1,4 +1,3 @@
-// controller/location_controller.dart
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -17,7 +16,7 @@ class LocationController extends ChangeNotifier {
   String? _error;
   bool _locationEnabled = false;
   StreamSubscription<Position>? _positionStream;
-  Map<String, List<LocationModel>> _petLocations = {}; // Mapa de petId para localizações
+  Map<String, List<LocationModel>> _petLocations = {};
 
   // Getters
   Position? get currentPosition => _currentPosition;
@@ -31,6 +30,14 @@ class LocationController extends ChangeNotifier {
     return _petLocations[petId] ?? [];
   }
 
+  // Obter localização mais recente do pet
+  LocationModel? getLatestPetLocation(String petId) {
+    final locations = getPetLocations(petId);
+    if (locations.isEmpty) return null;
+    
+    return locations.first;
+  }
+
   // Inicializar controller
   LocationController() {
     _initializeLocation();
@@ -41,12 +48,11 @@ class LocationController extends ChangeNotifier {
     try {
       _setLoading(true);
       
-      // Verificar se a localização está habilitada
       _locationEnabled = await Geolocator.isLocationServiceEnabled();
       
       if (_locationEnabled) {
         await _checkPermissions();
-        await _getCurrentLocation();
+        await _getInitialLocation(); // CORREÇÃO: método renomeado
         await _startLocationStream();
       }
       
@@ -54,6 +60,34 @@ class LocationController extends ChangeNotifier {
     } catch (e) {
       _error = 'Erro ao inicializar localização: $e';
       _setLoading(false);
+      notifyListeners();
+    }
+  }
+
+  // CORREÇÃO: Método _getCurrentLocation renomeado para _getInitialLocation
+  Future<void> _getInitialLocation() async {
+    try {
+      _currentPosition = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      // Obter endereço das coordenadas
+      String endereco = await _getAddressFromCoordinates(
+        _currentPosition!.latitude,
+        _currentPosition!.longitude,
+      );
+
+      final location = LocationModel(
+        latitude: _currentPosition!.latitude,
+        longitude: _currentPosition!.longitude,
+        endereco: endereco,
+        timestamp: DateTime.now(),
+      );
+
+      _currentLocation = location;
+      notifyListeners();
+    } catch (e) {
+      _error = 'Erro ao obter localização inicial: $e';
       notifyListeners();
     }
   }
@@ -131,7 +165,14 @@ class LocationController extends ChangeNotifier {
       
       if (places.isNotEmpty) {
         final place = places.first;
-        return '${place.street ?? ''}, ${place.subLocality ?? ''}, ${place.locality ?? ''}, ${place.administrativeArea ?? ''}';
+        final parts = [
+          place.street,
+          place.subLocality,
+          place.locality,
+          place.administrativeArea
+        ].where((part) => part != null && part!.isNotEmpty).toList();
+        
+        return parts.isNotEmpty ? parts.join(', ') : 'Endereço não disponível';
       }
       return 'Endereço não disponível';
     } catch (e) {
@@ -246,14 +287,6 @@ class LocationController extends ChangeNotifier {
 
   double _degreesToRadians(double degrees) {
     return degrees * pi / 180;
-  }
-
-  // Obter localização mais recente do pet
-  LocationModel? getLatestPetLocation(String petId) {
-    final locations = getPetLocations(petId);
-    if (locations.isEmpty) return null;
-    
-    return locations.first;
   }
 
   // Forçar recarregamento das localizações

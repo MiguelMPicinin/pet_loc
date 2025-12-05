@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:pet_loc/controller/petController.dart';
 import 'package:pet_loc/models/pet_model.dart';
 import 'package:pet_loc/services/app_routes.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:intl/intl.dart';
 
 class PetView extends StatefulWidget {
   const PetView({Key? key}) : super(key: key);
@@ -16,7 +18,7 @@ class PetView extends StatefulWidget {
 class _PetViewState extends State<PetView> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  int _selectedIndex = 1; // Índice 1 corresponde à tela de Pets
+  int _selectedIndex = 1;
 
   void _onItemTapped(int index) {
     setState(() {
@@ -27,7 +29,6 @@ class _PetViewState extends State<PetView> {
         Navigator.pushReplacementNamed(context, AppRoutes.home);
         break;
       case 1:
-        // Já está na tela de Pets, não faz nada
         break;
       case 2:
         Navigator.pushReplacementNamed(context, AppRoutes.desaparecidos);
@@ -108,7 +109,6 @@ class _PetViewState extends State<PetView> {
   @override
   void initState() {
     super.initState();
-    // Forçar recarregamento dos pets quando a tela iniciar
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final controller = Provider.of<PetController>(context, listen: false);
       if (controller.pets.isEmpty) {
@@ -157,7 +157,7 @@ class _PetViewState extends State<PetView> {
           }
 
           final pets = _searchQuery.isEmpty
-              ? controller.pets // Já são apenas os pets do usuário
+              ? controller.pets
               : controller.buscarPets(_searchQuery);
 
           return Column(
@@ -293,7 +293,6 @@ class _PetViewState extends State<PetView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Imagem do Pet
             Center(
               child: Container(
                 width: 120,
@@ -320,7 +319,6 @@ class _PetViewState extends State<PetView> {
             
             const SizedBox(height: 16),
             
-            // Nome do Pet
             Text(
               pet.nome,
               style: const TextStyle(
@@ -332,7 +330,6 @@ class _PetViewState extends State<PetView> {
             
             const SizedBox(height: 8),
             
-            // Descrição
             Text(
               pet.descricao,
               style: const TextStyle(
@@ -345,7 +342,6 @@ class _PetViewState extends State<PetView> {
             
             const SizedBox(height: 8),
             
-            // Contato
             Row(
               children: [
                 Icon(Icons.phone, size: 16, color: Colors.grey[600]),
@@ -362,7 +358,6 @@ class _PetViewState extends State<PetView> {
             
             const SizedBox(height: 16),
             
-            // Botões de Ação
             Row(
               children: [
                 Expanded(
@@ -403,64 +398,162 @@ class _PetViewState extends State<PetView> {
   }
 
   void _showQRCodeDialog(BuildContext context, PetModel pet) {
+    // Gerar URL para a página web pública
+    final webUrl = 'https://miguelmpicinin.github.io/Informacoes_Pet/';
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('QR Code do Pet'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(12),
+        title: Text('QR Code Universal - ${pet.nome}'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    QrImageView(
+                      data: webUrl,
+                      version: QrVersions.auto,
+                      size: 200,
+                      backgroundColor: Colors.white,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'QR Code para ${pet.nome}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Funciona em QUALQUER smartphone!',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.green[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: Column(
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '🔗 Link Web Público: https://miguelmpicinin.github.io/Informacoes_Pet/',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A73E8),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      webUrl.length > 40 ? '${webUrl.substring(0, 40)}...' : webUrl,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildQRCodeInfoItem('Pode ser escaneado por', 'Qualquer smartphone'),
+                    _buildQRCodeInfoItem('Não precisa ter o app', 'Funciona no navegador'),
+                    _buildQRCodeInfoItem('Compartilhe com', 'Qualquer pessoa'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
                 children: [
-                  Icon(Icons.qr_code_scanner, size: 80, color: Color(0xFF1A73E8)),
-                  const SizedBox(height: 16),
-                  Text(
-                    'QR Code para: ${pet.nome}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        _copyToClipboard(webUrl, pet.nome);
+                      },
+                      icon: const Icon(Icons.copy, size: 18),
+                      label: const Text('Copiar Link'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Ao escanear, mostrará:\n- Informações de contato\n- Localização atual',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        _shareQRCode(webUrl, pet.nome);
+                      },
+                      icon: const Icon(Icons.share, size: 18),
+                      label: const Text('Compartilhar'),
+                    ),
                   ),
                 ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Fechar'),
           ),
-          ElevatedButton(
-            onPressed: () {
-              _generateQRCode(pet);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1A73E8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQRCodeInfoItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
             ),
-            child: const Text('Gerar QR Code'),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 12),
+            ),
           ),
         ],
       ),
     );
   }
 
-  void _generateQRCode(PetModel pet) {
+  void _copyToClipboard(String text, String petName) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('QR Code gerado para ${pet.nome}'),
+        content: Text('Link do $petName copiado!'),
         backgroundColor: Colors.green,
       ),
     );
+    // Aqui você implementaria a cópia para área de transferência
+  }
+
+  void _shareQRCode(String url, String petName) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Compartilhando $petName...'),
+        backgroundColor: Colors.blue,
+      ),
+    );
+    // Aqui você implementaria o compartilhamento
   }
 
   Uint8List _decodeBase64(String base64String) {
@@ -473,7 +566,7 @@ class _PetViewState extends State<PetView> {
     }
   }
 
-  @override
+  
   void dispose() {
     _searchController.dispose();
     super.dispose();

@@ -92,7 +92,20 @@ class AppRoutes {
           );
         }
       },
-      localizacaoPet: (context) => LocalizacaoPetView(),
+      localizacaoPet: (context) { // CORRIGIDO: Agora aceita argumentos
+        final arguments = ModalRoute.of(context)!.settings.arguments;
+        if (arguments is String) {
+          return LocalizacaoPetView(petId: arguments);
+        } else if (arguments is Map<String, dynamic> && arguments.containsKey('petId')) {
+          return LocalizacaoPetView(petId: arguments['petId']);
+        } else {
+          return const Scaffold(
+            body: Center(
+              child: Text('Erro: Pet ID não fornecido'),
+            ),
+          );
+        }
+      },
       community: (context) => const CommunityView(),
       
       // Novas rotas para produtos
