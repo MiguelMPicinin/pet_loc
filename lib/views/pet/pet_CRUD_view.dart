@@ -338,8 +338,8 @@ class _PetCRUDViewState extends State<PetCRUDView> {
   }
 
   Widget _buildQRCodeSection() {
-    // Gerar URL para página web
-    final webUrl = 'https://miguelmpicinin.github.io/Informacoes_Pet/';
+    // Gerar URL específica para este pet
+    final webUrl = 'https://miguelmpicinin.github.io/Informacoes_Pet/?petId=${widget.pet.id}';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -404,7 +404,7 @@ class _PetCRUDViewState extends State<PetCRUDView> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'URL: ${webUrl.substring(0, 40)}...',
+                  'URL: ${webUrl.length > 40 ? '${webUrl.substring(0, 40)}...' : webUrl}',
                   style: const TextStyle(
                     fontSize: 10,
                     color: Colors.grey,
@@ -443,7 +443,7 @@ class _PetCRUDViewState extends State<PetCRUDView> {
   }
 
   void _copyWebLink() {
-    final webUrl = 'https://miguelmpicinin.github.io/Informacoes_Pet/';
+    final webUrl = 'https://miguelmpicinin.github.io/Informacoes_Pet/?petId=${widget.pet.id}';
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -666,7 +666,7 @@ class _PetCRUDViewState extends State<PetCRUDView> {
   }
 
   Widget _buildQRCodeContent() {
-    final webUrl = 'https://miguelmpicinin.github.io/Informacoes_Pet/';
+    final webUrl = 'https://miguelmpicinin.github.io/Informacoes_Pet/?petId=${widget.pet.id}';
 
     return Column(
       children: [
@@ -756,4 +756,4 @@ class _PetCRUDViewState extends State<PetCRUDView> {
     _contatoController.dispose();
     super.dispose();
   }
-}     
+}

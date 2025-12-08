@@ -397,9 +397,26 @@ class _PetViewState extends State<PetView> {
     );
   }
 
+  // Função para gerar URL única para o pet
+  String _generatePetUrl(PetModel pet) {
+    // Codificar todos os parâmetros para URL
+    final nome = Uri.encodeComponent(pet.nome);
+    final contato = Uri.encodeComponent(pet.contato);
+    final descricao = Uri.encodeComponent(pet.descricao);
+    final petId = pet.id ?? 'sem_id';
+    
+    // Construir a URL com todos os parâmetros
+    return 'https://miguelmpicinin.github.io/Informacoes_Pet/?'
+        'petId=$petId'
+        '&nome=$nome'
+        '&contato=$contato'
+        '&descricao=$descricao'
+        '&data=${DateFormat('yyyyMMddHHmmss').format(DateTime.now())}';
+  }
+
   void _showQRCodeDialog(BuildContext context, PetModel pet) {
-    // Gerar URL para a página web pública
-    final webUrl = 'https://miguelmpicinin.github.io/Informacoes_Pet/';
+    // Gerar URL única para este pet
+    final webUrl = _generatePetUrl(pet);
 
     showDialog(
       context: context,
@@ -454,7 +471,7 @@ class _PetViewState extends State<PetView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      '🔗 Link Web Público: https://miguelmpicinin.github.io/Informacoes_Pet/',
+                      '🔗 Link Web Público:',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF1A73E8),
@@ -462,10 +479,13 @@ class _PetViewState extends State<PetView> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      webUrl.length > 40 ? '${webUrl.substring(0, 40)}...' : webUrl,
+                      webUrl.length > 50 ? '${webUrl.substring(0, 50)}...' : webUrl,
                       style: const TextStyle(fontSize: 12),
                     ),
                     const SizedBox(height: 8),
+                    _buildQRCodeInfoItem('ID do Pet', pet.id ?? 'N/A'),
+                    _buildQRCodeInfoItem('Nome', pet.nome),
+                    _buildQRCodeInfoItem('Contato', pet.contato),
                     _buildQRCodeInfoItem('Pode ser escaneado por', 'Qualquer smartphone'),
                     _buildQRCodeInfoItem('Não precisa ter o app', 'Funciona no navegador'),
                     _buildQRCodeInfoItem('Compartilhe com', 'Qualquer pessoa'),
@@ -543,7 +563,6 @@ class _PetViewState extends State<PetView> {
         backgroundColor: Colors.green,
       ),
     );
-    // Aqui você implementaria a cópia para área de transferência
   }
 
   void _shareQRCode(String url, String petName) {
@@ -553,7 +572,6 @@ class _PetViewState extends State<PetView> {
         backgroundColor: Colors.blue,
       ),
     );
-    // Aqui você implementaria o compartilhamento
   }
 
   Uint8List _decodeBase64(String base64String) {
@@ -566,7 +584,7 @@ class _PetViewState extends State<PetView> {
     }
   }
 
-  
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
