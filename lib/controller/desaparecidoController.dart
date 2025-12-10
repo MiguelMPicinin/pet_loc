@@ -14,7 +14,6 @@ class DesaparecidosController with ChangeNotifier {
   String? _error;
   File? _selectedImage;
 
-  // Getters
   List<DesaparecidoModel> get desaparecidos => _desaparecidos;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -26,12 +25,10 @@ class DesaparecidosController with ChangeNotifier {
   List<DesaparecidoModel> get desaparecidosEncontrados =>
       _desaparecidos.where((d) => d.encontrado).toList();
 
-  // Inicializar controller
   DesaparecidosController() {
     _loadDesaparecidos();
   }
 
-  // Carregar todos os desaparecidos
   Future<void> _loadDesaparecidos() async {
     try {
       _setLoading(true);
@@ -53,7 +50,6 @@ class DesaparecidosController with ChangeNotifier {
     }
   }
 
-  // Stream de desaparecidos para atualização em tempo real
   Stream<List<DesaparecidoModel>> get desaparecidosStream {
     return _firestore
         .collection('desaparecidos')
@@ -64,7 +60,6 @@ class DesaparecidosController with ChangeNotifier {
             .toList());
   }
 
-  // Cadastrar novo desaparecido
   Future<bool> cadastrarDesaparecido({
     required String nome,
     required String descricao,
@@ -76,7 +71,6 @@ class DesaparecidosController with ChangeNotifier {
       _setLoading(true);
       _error = null;
 
-      // Validar campos obrigatórios
       if (nome.isEmpty || descricao.isEmpty || contato.isEmpty) {
         _error = 'Preencha todos os campos obrigatórios';
         _setLoading(false);
@@ -102,7 +96,6 @@ class DesaparecidosController with ChangeNotifier {
           .collection('desaparecidos')
           .add(desaparecido.toFirestore());
 
-      // Adicionar à lista local com o ID gerado
       _desaparecidos.insert(0, desaparecido.copyWith(id: docRef.id));
       _clearImage();
       _setLoading(false);
@@ -115,7 +108,6 @@ class DesaparecidosController with ChangeNotifier {
     }
   }
 
-  // Editar desaparecido
   Future<bool> editarDesaparecido({
     required String desaparecidoId,
     required String nome,
@@ -134,7 +126,6 @@ class DesaparecidosController with ChangeNotifier {
         imagemBase64 = base64Encode(bytes);
       }
 
-      // Buscar desaparecido atual
       final desaparecidoIndex = _desaparecidos.indexWhere((d) => d.id == desaparecidoId);
       if (desaparecidoIndex == -1) {
         _error = 'Desaparecido não encontrado';
@@ -153,7 +144,6 @@ class DesaparecidosController with ChangeNotifier {
         'atualizadoEm': FieldValue.serverTimestamp(),
       };
 
-      // Adicionar campo encontrado se fornecido
       if (encontrado != null) {
         updateData['encontrado'] = encontrado;
       }
@@ -163,7 +153,6 @@ class DesaparecidosController with ChangeNotifier {
           .doc(desaparecidoId)
           .update(updateData);
 
-      // Atualizar lista local
       _desaparecidos[desaparecidoIndex] = desaparecidoAtual.copyWith(
         nome: nome,
         descricao: descricao,
@@ -181,7 +170,6 @@ class DesaparecidosController with ChangeNotifier {
     }
   }
 
-  // Marcar como encontrado
   Future<bool> marcarComoEncontrado(String desaparecidoId) async {
     try {
       await _firestore
@@ -192,7 +180,6 @@ class DesaparecidosController with ChangeNotifier {
             'atualizadoEm': FieldValue.serverTimestamp(),
           });
 
-      // Atualizar lista local
       final index = _desaparecidos.indexWhere((d) => d.id == desaparecidoId);
       if (index != -1) {
         _desaparecidos[index] = _desaparecidos[index].copyWith(encontrado: true);
@@ -207,7 +194,6 @@ class DesaparecidosController with ChangeNotifier {
     }
   }
 
-  // Deletar desaparecido
   Future<bool> deletarDesaparecido(String desaparecidoId) async {
     try {
       _setLoading(true);
@@ -229,7 +215,6 @@ class DesaparecidosController with ChangeNotifier {
     }
   }
 
-  // Buscar desaparecido por ID
   DesaparecidoModel? getDesaparecidoById(String desaparecidoId) {
     try {
       return _desaparecidos.firstWhere((d) => d.id == desaparecidoId);
@@ -238,7 +223,6 @@ class DesaparecidosController with ChangeNotifier {
     }
   }
 
-  // Buscar desaparecidos por nome ou descrição
   List<DesaparecidoModel> buscarDesaparecidos(String query) {
     if (query.isEmpty) return _desaparecidos;
     
@@ -249,14 +233,12 @@ class DesaparecidosController with ChangeNotifier {
     }).toList();
   }
 
-  // Buscar desaparecidos do usuário atual
   List<DesaparecidoModel> getDesaparecidosDoUsuario(String? userId) {
     if (userId == null) return [];
     
     return _desaparecidos.where((d) => d.userId == userId).toList();
   }
 
-  // Selecionar imagem da galeria
   Future<void> selecionarImagem() async {
     try {
       final XFile? pickedFile = await _imagePicker.pickImage(
@@ -275,7 +257,6 @@ class DesaparecidosController with ChangeNotifier {
     }
   }
 
-  // Tirar foto com câmera
   Future<void> tirarFoto() async {
     try {
       final XFile? pickedFile = await _imagePicker.pickImage(
@@ -294,36 +275,30 @@ class DesaparecidosController with ChangeNotifier {
     }
   }
 
-  // Limpar imagem selecionada
   void _clearImage() {
     _selectedImage = null;
     notifyListeners();
   }
 
-  // Remover imagem selecionada
   void removerImagemSelecionada() {
     _selectedImage = null;
     notifyListeners();
   }
 
-  // Controlar estado de loading
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
   }
 
-  // Limpar erros
   void clearError() {
     _error = null;
     notifyListeners();
   }
 
-  // Forçar recarregamento
   Future<void> refresh() async {
     await _loadDesaparecidos();
   }
 
-  // Estatísticas
   Map<String, int> get estatisticas {
     final ativos = desaparecidosAtivos.length;
     final encontrados = desaparecidosEncontrados.length;

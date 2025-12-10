@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pet_loc/controller/petController.dart';
-import 'package:pet_loc/services/app_routes.dart';
 
 class PetCadastroView extends StatefulWidget {
   const PetCadastroView({Key? key}) : super(key: key);
@@ -16,7 +15,6 @@ class _PetCadastroViewState extends State<PetCadastroView> {
   final TextEditingController _descricaoController = TextEditingController();
   final TextEditingController _contatoController = TextEditingController();
 
-  // Limites de caracteres
   static const int _limiteNome = 30;
   static const int _limiteDescricao = 150;
   static const int _limiteContato = 15;
@@ -46,12 +44,9 @@ class _PetCadastroViewState extends State<PetCadastroView> {
                   key: _formKey,
                   child: ListView(
                     children: [
-                      // Seção de Imagem
                       _buildImageSection(controller),
-                      
                       const SizedBox(height: 24),
                       
-                      // Campo Nome
                       TextFormField(
                         controller: _nomeController,
                         maxLength: _limiteNome,
@@ -79,7 +74,6 @@ class _PetCadastroViewState extends State<PetCadastroView> {
                       
                       const SizedBox(height: 16),
                       
-                      // Campo Descrição
                       TextFormField(
                         controller: _descricaoController,
                         maxLength: _limiteDescricao,
@@ -108,7 +102,6 @@ class _PetCadastroViewState extends State<PetCadastroView> {
                       
                       const SizedBox(height: 16),
                       
-                      // Campo Contato
                       TextFormField(
                         controller: _contatoController,
                         maxLength: _limiteContato,
@@ -137,9 +130,10 @@ class _PetCadastroViewState extends State<PetCadastroView> {
                       
                       const SizedBox(height: 32),
                       
-                      // Botão Cadastrar
                       ElevatedButton(
-                        onPressed: controller.isLoading ? null : () => _cadastrarPet(controller),
+                        onPressed: controller.isLoading 
+                            ? null 
+                            : () => _cadastrarPet(context, controller),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1A73E8),
                           minimumSize: const Size(double.infinity, 50),
@@ -167,8 +161,6 @@ class _PetCadastroViewState extends State<PetCadastroView> {
                       ),
                       
                       const SizedBox(height: 16),
-                      
-                      // Informações adicionais
                       _buildInfoCard(),
                     ],
                   ),
@@ -300,7 +292,6 @@ class _PetCadastroViewState extends State<PetCadastroView> {
           _buildInfoItem('• Descrição: máximo $_limiteDescricao caracteres'),
           _buildInfoItem('• Contato: máximo $_limiteContato caracteres'),
           _buildInfoItem('• A foto ajuda na identificação do seu pet'),
-          _buildInfoItem('• Após cadastrar, gere o QR Code para colocar na coleira'),
         ],
       ),
     );
@@ -339,9 +330,7 @@ class _PetCadastroViewState extends State<PetCadastroView> {
             ),
             IconButton(
               icon: const Icon(Icons.close, size: 16),
-              onPressed: () {
-                controller.clearError();
-              },
+              onPressed: () => controller.clearError(),
             ),
           ],
         ),
@@ -349,29 +338,75 @@ class _PetCadastroViewState extends State<PetCadastroView> {
     );
   }
 
-  void _cadastrarPet(PetController controller) async {
+  Future<void> _cadastrarPet(BuildContext context, PetController controller) async {
+    // Validar formulário
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    final success = await controller.cadastrarPet(
-      nome: _nomeController.text,
-      descricao: _descricaoController.text,
-      contato: _contatoController.text,
-    );
-
-    if (success) {
+    // Validar campos manualmente
+    if (_nomeController.text.length > _limiteNome) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Pet cadastrado com sucesso!'),
-          backgroundColor: Colors.green,
+          content: Text('Nome muito longo (máximo 30 caracteres)'),
+          backgroundColor: Colors.red,
         ),
       );
-      Navigator.pop(context);
-    } else {
+      return;
+    }
+
+    if (_descricaoController.text.length > _limiteDescricao) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Descrição muito longa (máximo 150 caracteres)'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_contatoController.text.length > _limiteContato) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Contato muito longo (máximo 15 caracteres)'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Chamar o controller para cadastrar o pet
+    final petId = await controller.cadastrarPet(
+      nome: _nomeController.text.trim(),
+      descricao: _descricaoController.text.trim(),
+      contato: _contatoController.text.trim(),
+    );
+
+    if (petId != null && petId.isNotEmpty) {
+      // Sucesso
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erro: ${controller.error}'),
+          content: Text('Pet "${_nomeController.text}" cadastrado com sucesso!'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      
+      // Limpar formulário
+      _nomeController.clear();
+      _descricaoController.clear();
+      _contatoController.clear();
+      
+      // Voltar após breve delay
+      await Future.delayed(const Duration(milliseconds: 1500));
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } else {
+      // Erro
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro: ${controller.error ?? "Falha ao cadastrar pet"}'),
           backgroundColor: Colors.red,
         ),
       );

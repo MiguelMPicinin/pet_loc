@@ -48,8 +48,12 @@ class LojaModel {
       'contato': contato,
       'imagemBase64': imagemBase64 ?? '',
       'userId': userId,
-      'criadoEm': FieldValue.serverTimestamp(),
-      'atualizadoEm': FieldValue.serverTimestamp(),
+      'criadoEm': criadoEm != null 
+          ? Timestamp.fromDate(criadoEm!) 
+          : FieldValue.serverTimestamp(),
+      'atualizadoEm': atualizadoEm != null 
+          ? Timestamp.fromDate(atualizadoEm!) 
+          : FieldValue.serverTimestamp(),
       'produtosIds': produtosIds,
       'ativa': ativa,
     };

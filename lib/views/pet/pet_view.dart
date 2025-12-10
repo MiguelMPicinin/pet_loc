@@ -7,6 +7,7 @@ import 'package:pet_loc/models/pet_model.dart';
 import 'package:pet_loc/services/app_routes.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class PetView extends StatefulWidget {
   const PetView({Key? key}) : super(key: key);
@@ -19,6 +20,22 @@ class _PetViewState extends State<PetView> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   int _selectedIndex = 1;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  String? _currentUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = _auth.currentUser;
+    _currentUserId = user?.uid;
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final controller = Provider.of<PetController>(context, listen: false);
+      if (controller.pets.isEmpty) {
+        controller.refresh();
+      }
+    });
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -104,17 +121,6 @@ class _PetViewState extends State<PetView> {
       elevation: 8,
       onTap: _onItemTapped,
     );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final controller = Provider.of<PetController>(context, listen: false);
-      if (controller.pets.isEmpty) {
-        controller.refresh();
-      }
-    });
   }
 
   @override
@@ -284,6 +290,9 @@ class _PetViewState extends State<PetView> {
   }
 
   Widget _buildPetCard(PetModel pet, BuildContext context) {
+    final bool temUserId = _currentUserId != null && _currentUserId!.isNotEmpty;
+    final bool temPetId = pet.hasId;
+
     return Card(
       elevation: 4,
       margin: const EdgeInsets.only(bottom: 16),
@@ -319,13 +328,37 @@ class _PetViewState extends State<PetView> {
             
             const SizedBox(height: 16),
             
-            Text(
-              pet.nome,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1A73E8),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    pet.nome,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A73E8),
+                    ),
+                  ),
+                ),
+                if (!temUserId || !temPetId)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.orange[50],
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.orange),
+                    ),
+                    child: const Text(
+                      'QR LIMITADO',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.orange,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             
             const SizedBox(height: 8),
@@ -354,6 +387,17 @@ class _PetViewState extends State<PetView> {
                   ),
                 ),
               ],
+            ),
+            
+            const SizedBox(height: 8),
+            
+            Text(
+              'ID: ${pet.id.substring(0, 8)}...',
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey[500],
+                fontFamily: 'monospace',
+              ),
             ),
             
             const SizedBox(height: 16),
@@ -386,7 +430,10 @@ class _PetViewState extends State<PetView> {
                   onPressed: () {
                     _showQRCodeDialog(context, pet);
                   },
-                  icon: const Icon(Icons.qr_code, color: Color(0xFF1A73E8)),
+                  icon: Icon(
+                    Icons.qr_code,
+                    color: temUserId ? const Color(0xFF1A73E8) : Colors.grey[400],
+                  ),
                   tooltip: 'Gerar QR Code',
                 ),
               ],
@@ -397,31 +444,47 @@ class _PetViewState extends State<PetView> {
     );
   }
 
-  // Função para gerar URL única para o pet
   String _generatePetUrl(PetModel pet) {
-    // Codificar todos os parâmetros para URL
-    final nome = Uri.encodeComponent(pet.nome);
-    final contato = Uri.encodeComponent(pet.contato);
-    final descricao = Uri.encodeComponent(pet.descricao);
-    final petId = pet.id ?? 'sem_id';
+    if (_currentUserId == null || _currentUserId!.isEmpty) {
+      return 'https://miguelmpicinin.github.io/Informacoes_Pet/?erro=Usuario+nao+autenticado';
+    }
     
-    // Construir a URL com todos os parâmetros
-    return 'https://miguelmpicinin.github.io/Informacoes_Pet/?'
-        'petId=$petId'
-        '&nome=$nome'
-        '&contato=$contato'
-        '&descricao=$descricao'
-        '&data=${DateFormat('yyyyMMddHHmmss').format(DateTime.now())}';
+    final String encodedPetId = Uri.encodeComponent(pet.id);
+    final String encodedPetName = Uri.encodeComponent(pet.nome);
+    final String encodedUserId = Uri.encodeComponent(_currentUserId!);
+    final String encodedContato = Uri.encodeComponent(pet.contato);
+    final String encodedDescricao = Uri.encodeComponent(pet.descricao);
+    
+    String url = 'https://miguelmpicinin.github.io/Informacoes_Pet/'
+        '?petId=$encodedPetId'
+        '&petName=$encodedPetName'
+        '&userId=$encodedUserId'
+        '&ownerContact=$encodedContato'
+        '&description=$encodedDescricao';
+    
+    url += '&timestamp=${DateTime.now().millisecondsSinceEpoch}'
+           '&source=app_petloc';
+    
+    return url;
   }
 
   void _showQRCodeDialog(BuildContext context, PetModel pet) {
-    // Gerar URL única para este pet
-    final webUrl = _generatePetUrl(pet);
+    if (_currentUserId == null || _currentUserId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Erro: Usuário não autenticado'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
+    final webUrl = _generatePetUrl(pet);
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('QR Code Universal - ${pet.nome}'),
+        title: Text('QR Code - ${pet.nome}'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -434,11 +497,26 @@ class _PetViewState extends State<PetView> {
                 ),
                 child: Column(
                   children: [
-                    QrImageView(
-                      data: webUrl,
-                      version: QrVersions.auto,
-                      size: 200,
-                      backgroundColor: Colors.white,
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: QrImageView(
+                        data: webUrl,
+                        version: QrVersions.auto,
+                        size: 200,
+                        backgroundColor: Colors.white,
+                        errorStateBuilder: (cxt, err) {
+                          return const Center(
+                            child: Text(
+                              'Erro ao gerar QR',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -450,7 +528,7 @@ class _PetViewState extends State<PetView> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Funciona em QUALQUER smartphone!',
+                      'Escaneie com qualquer app de QR Code',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.green[700],
@@ -471,24 +549,34 @@ class _PetViewState extends State<PetView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      '🔗 Link Web Público:',
+                      '📋 Informações do QR Code:',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF1A73E8),
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      webUrl.length > 50 ? '${webUrl.substring(0, 50)}...' : webUrl,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildQRCodeInfoItem('ID do Pet', pet.id ?? 'N/A'),
-                    _buildQRCodeInfoItem('Nome', pet.nome),
+                    _buildQRCodeInfoItem('ID do Pet', pet.id),
+                    _buildQRCodeInfoItem('Nome do Pet', pet.nome),
+                    _buildQRCodeInfoItem('ID do Dono', '${_currentUserId!.substring(0, 12)}...'),
                     _buildQRCodeInfoItem('Contato', pet.contato),
-                    _buildQRCodeInfoItem('Pode ser escaneado por', 'Qualquer smartphone'),
-                    _buildQRCodeInfoItem('Não precisa ter o app', 'Funciona no navegador'),
-                    _buildQRCodeInfoItem('Compartilhe com', 'Qualquer pessoa'),
+                    _buildQRCodeInfoItem('URL', _getShortUrl(webUrl)),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.green[50],
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.green),
+                      ),
+                      child: const Text(
+                        '✓ Este QR Code pode ser escaneado por qualquer smartphone',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -511,10 +599,13 @@ class _PetViewState extends State<PetView> {
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        _shareQRCode(webUrl, pet.nome);
+                        _testQRCode(webUrl, pet.nome, context);
                       },
-                      icon: const Icon(Icons.share, size: 18),
-                      label: const Text('Compartilhar'),
+                      icon: const Icon(Icons.qr_code_scanner, size: 18),
+                      label: const Text('Testar'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                      ),
                     ),
                   ),
                 ],
@@ -532,6 +623,76 @@ class _PetViewState extends State<PetView> {
     );
   }
 
+  void _testQRCode(String url, String petName, BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Teste do QR Code'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Para testar seu QR Code:'),
+            const SizedBox(height: 10),
+            const Text('1. Abra o app de câmera do seu celular'),
+            const Text('2. Aponte para este QR Code'),
+            const Text('3. Toque na notificação que aparecer'),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'URL de Teste:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    _getShortUrl(url),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _copyToClipboard(url, petName);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      minimumSize: const Size(double.infinity, 36),
+                    ),
+                    child: const Text('Copiar URL para testar no navegador'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getShortUrl(String url) {
+    if (url.length > 50) {
+      return '${url.substring(0, 50)}...';
+    }
+    return url;
+  }
+
   Widget _buildQRCodeInfoItem(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -542,13 +703,14 @@ class _PetViewState extends State<PetView> {
             '$label: ',
             style: const TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: 12,
+              fontSize: 11,
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(fontSize: 12),
+              style: const TextStyle(fontSize: 11),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -561,15 +723,6 @@ class _PetViewState extends State<PetView> {
       SnackBar(
         content: Text('Link do $petName copiado!'),
         backgroundColor: Colors.green,
-      ),
-    );
-  }
-
-  void _shareQRCode(String url, String petName) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Compartilhando $petName...'),
-        backgroundColor: Colors.blue,
       ),
     );
   }

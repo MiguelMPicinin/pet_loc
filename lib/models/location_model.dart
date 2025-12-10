@@ -1,4 +1,3 @@
-// models/location_model.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LocationModel {
@@ -14,6 +13,10 @@ class LocationModel {
   final String? encontradoPor;
   final String? telefoneEncontrado;
   final bool? confirmado;
+  final bool isQRCodeLocation;
+  final String? source;
+  final String? finderName;
+  final String? finderPhone;
 
   LocationModel({
     this.id,
@@ -28,9 +31,12 @@ class LocationModel {
     this.encontradoPor,
     this.telefoneEncontrado,
     this.confirmado = false,
+    this.isQRCodeLocation = false,
+    this.source = 'app',
+    this.finderName,
+    this.finderPhone,
   });
 
-  // Converter para Firestore
   Map<String, dynamic> toFirestore() {
     return {
       if (petId != null) 'petId': petId,
@@ -42,14 +48,17 @@ class LocationModel {
       'cep': cep,
       'timestamp': timestamp != null 
           ? Timestamp.fromDate(timestamp!)
-          : Timestamp.fromDate(DateTime.now()),
+          : FieldValue.serverTimestamp(),
       'encontradoPor': encontradoPor,
       'telefoneEncontrado': telefoneEncontrado,
       'confirmado': confirmado ?? false,
+      'isQRCodeLocation': isQRCodeLocation,
+      'source': source,
+      'finderName': finderName ?? encontradoPor,
+      'finderPhone': finderPhone ?? telefoneEncontrado,
     };
   }
 
-  // Criar a partir do Firestore
   factory LocationModel.fromFirestore(Map<String, dynamic> data, String? id) {
     Timestamp? timestamp = data['timestamp'] as Timestamp?;
     
@@ -58,38 +67,44 @@ class LocationModel {
       petId: data['petId'],
       latitude: (data['latitude'] as num).toDouble(),
       longitude: (data['longitude'] as num).toDouble(),
-      endereco: data['endereco'],
+      endereco: data['endereco'] ?? data['address'],
       cidade: data['cidade'],
       estado: data['estado'],
       cep: data['cep'],
       timestamp: timestamp?.toDate(),
-      encontradoPor: data['encontradoPor'],
-      telefoneEncontrado: data['telefoneEncontrado'],
+      encontradoPor: data['encontradoPor'] ?? data['finderName'],
+      telefoneEncontrado: data['telefoneEncontrado'] ?? data['finderPhone'],
       confirmado: data['confirmado'] as bool? ?? false,
+      isQRCodeLocation: data['isQRCodeLocation'] as bool? ?? false,
+      source: data['source'] as String? ?? 'app',
+      finderName: data['finderName'],
+      finderPhone: data['finderPhone'],
     );
   }
 
-  // Criar a partir do JSON
   factory LocationModel.fromJson(Map<String, dynamic> json) {
     return LocationModel(
       id: json['id'],
       petId: json['petId'],
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
-      endereco: json['endereco'],
+      endereco: json['endereco'] ?? json['address'],
       cidade: json['cidade'],
       estado: json['estado'],
       cep: json['cep'],
       timestamp: json['timestamp'] != null 
           ? DateTime.parse(json['timestamp'])
           : null,
-      encontradoPor: json['encontradoPor'],
-      telefoneEncontrado: json['telefoneEncontrado'],
+      encontradoPor: json['encontradoPor'] ?? json['finderName'],
+      telefoneEncontrado: json['telefoneEncontrado'] ?? json['finderPhone'],
       confirmado: json['confirmado'] as bool? ?? false,
+      isQRCodeLocation: json['isQRCodeLocation'] as bool? ?? false,
+      source: json['source'] as String? ?? 'qr_code',
+      finderName: json['finderName'],
+      finderPhone: json['finderPhone'],
     );
   }
 
-  // Converter para JSON
   Map<String, dynamic> toJson() {
     return {
       if (id != null) 'id': id,
@@ -107,7 +122,6 @@ class LocationModel {
     };
   }
 
-  // Copiar com alterações
   LocationModel copyWith({
     String? id,
     String? petId,
@@ -121,6 +135,10 @@ class LocationModel {
     String? encontradoPor,
     String? telefoneEncontrado,
     bool? confirmado,
+    bool? isQRCodeLocation,
+    String? source,
+    String? finderName,
+    String? finderPhone,
   }) {
     return LocationModel(
       id: id ?? this.id,
@@ -135,10 +153,13 @@ class LocationModel {
       encontradoPor: encontradoPor ?? this.encontradoPor,
       telefoneEncontrado: telefoneEncontrado ?? this.telefoneEncontrado,
       confirmado: confirmado ?? this.confirmado,
+      isQRCodeLocation: isQRCodeLocation ?? this.isQRCodeLocation,
+      source: source ?? this.source,
+      finderName: finderName ?? this.finderName,
+      finderPhone: finderPhone ?? this.finderPhone,
     );
   }
 
-  // Verificar se a localização é válida
   bool get isValid {
     return latitude >= -90 && 
            latitude <= 90 &&
@@ -146,12 +167,10 @@ class LocationModel {
            longitude <= 180;
   }
 
-  // Obter timestamp atual se for nulo
   DateTime get effectiveTimestamp {
     return timestamp ?? DateTime.now();
   }
 
-  // Descrição formatada do endereço
   String get enderecoFormatado {
     final parts = [endereco, cidade, estado, cep].where((part) => part != null && part!.isNotEmpty).toList();
     return parts.isNotEmpty ? parts.join(', ') : 'Lat: $latitude, Lng: $longitude';
@@ -166,49 +185,11 @@ class LocationModel {
         other.petId == petId &&
         other.latitude == latitude &&
         other.longitude == longitude &&
-        other.endereco == endereco &&
-        other.cidade == cidade &&
-        other.estado == estado &&
-        other.cep == cep &&
-        other.timestamp == timestamp &&
-        other.encontradoPor == encontradoPor &&
-        other.telefoneEncontrado == telefoneEncontrado &&
-        other.confirmado == confirmado;
+        other.timestamp == timestamp;
   }
 
   @override
   int get hashCode {
-    return Object.hash(
-      id,
-      petId,
-      latitude,
-      longitude,
-      endereco,
-      cidade,
-      estado,
-      cep,
-      timestamp,
-      encontradoPor,
-      telefoneEncontrado,
-      confirmado,
-    );
-  }
-
-  @override
-  String toString() {
-    return 'LocationModel('
-        'id: $id, '
-        'petId: $petId, '
-        'lat: $latitude, '
-        'lng: $longitude, '
-        'endereco: $endereco, '
-        'cidade: $cidade, '
-        'estado: $estado, '
-        'cep: $cep, '
-        'timestamp: $timestamp, '
-        'encontradoPor: $encontradoPor, '
-        'telefoneEncontrado: $telefoneEncontrado, '
-        'confirmado: $confirmado'
-        ')';
+    return Object.hash(id, petId, latitude, longitude, timestamp);
   }
 }

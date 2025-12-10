@@ -52,7 +52,6 @@ class _HomeViewState extends State<HomeView> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                // Adicione aqui a lógica de logout
                 Navigator.pushReplacementNamed(context, AppRoutes.login);
               },
               child: const Text('Sair'),
@@ -184,8 +183,20 @@ class _HomeViewState extends State<HomeView> {
             child: Center(
               child: Consumer<PetController>(
                 builder: (context, petController, child) {
+                  // 🔥 CORREÇÃO: Declarar a variável sem inicialização e usar try-catch
+                  Stream<List<PetModel>> petsStream;
+                  
+                  try {
+                    // Tenta acessar o petsStream
+                    petsStream = petController.petsStream;
+                  } catch (e) {
+                    print('⚠️ petsStream não disponível, usando fallback: $e');
+                    // Fallback: cria um stream com a lista atual de pets
+                    petsStream = Stream.value(petController.pets);
+                  }
+                  
                   return StreamBuilder<List<PetModel>>(
-                    stream: petController.petsStream,
+                    stream: petsStream,
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
                         return Padding(

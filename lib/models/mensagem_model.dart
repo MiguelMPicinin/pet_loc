@@ -7,9 +7,9 @@ class MensagemModel {
   final String remetenteNome;
   final DateTime enviadoEm;
   final bool lida;
-  final String? tipo; // 'texto', 'imagem', 'localizacao'
-  final String? urlMidia; // URL para imagens, arquivos, etc.
-  final Map<String, dynamic>? metadados; // Informações adicionais
+  final String? tipo;
+  final String? urlMidia;
+  final Map<String, dynamic>? metadados;
 
   MensagemModel({
     required this.id,
@@ -54,7 +54,6 @@ class MensagemModel {
     };
   }
 
-  // Construtor para mensagem de texto simples
   factory MensagemModel.texto({
     required String id,
     required String texto,
@@ -71,7 +70,6 @@ class MensagemModel {
     );
   }
 
-  // Construtor para mensagem com imagem
   factory MensagemModel.imagem({
     required String id,
     required String urlImagem,
@@ -95,7 +93,6 @@ class MensagemModel {
     );
   }
 
-  // Construtor para mensagem com localização
   factory MensagemModel.localizacao({
     required String id,
     required double latitude,
@@ -119,16 +116,10 @@ class MensagemModel {
     );
   }
 
-  // Verificar se a mensagem é do tipo texto
   bool get isTexto => tipo == 'texto';
-
-  // Verificar se a mensagem é do tipo imagem
   bool get isImagem => tipo == 'imagem';
-
-  // Verificar se a mensagem é do tipo localização
   bool get isLocalizacao => tipo == 'localizacao';
 
-  // Obter dados de localização se disponível
   Map<String, dynamic>? get dadosLocalizacao {
     if (isLocalizacao && metadados != null) {
       return {
@@ -140,43 +131,38 @@ class MensagemModel {
     return null;
   }
 
-  // Copiar mensagem com novos valores
-  // No mensagem_model.dart - Correção do copyWith
-MensagemModel copyWith({
-  String? id,
-  String? texto,
-  String? remetenteId,
-  String? remetenteNome,
-  DateTime? enviadoEm,
-  bool? lida,
-  String? tipo,
-  String? urlMidia,
-  Map<String, dynamic>? metadados,
-}) {
-  return MensagemModel(
-    id: id ?? this.id,
-    texto: texto ?? this.texto,
-    remetenteId: remetenteId ?? this.remetenteId,
-    remetenteNome: remetenteNome ?? this.remetenteNome,
-    enviadoEm: enviadoEm ?? this.enviadoEm,
-    lida: lida ?? this.lida,
-    tipo: tipo ?? this.tipo,
-    urlMidia: urlMidia ?? this.urlMidia,
-    metadados: metadados ?? this.metadados,
-  );
-}
+  MensagemModel copyWith({
+    String? id,
+    String? texto,
+    String? remetenteId,
+    String? remetenteNome,
+    DateTime? enviadoEm,
+    bool? lida,
+    String? tipo,
+    String? urlMidia,
+    Map<String, dynamic>? metadados,
+  }) {
+    return MensagemModel(
+      id: id ?? this.id,
+      texto: texto ?? this.texto,
+      remetenteId: remetenteId ?? this.remetenteId,
+      remetenteNome: remetenteNome ?? this.remetenteNome,
+      enviadoEm: enviadoEm ?? this.enviadoEm,
+      lida: lida ?? this.lida,
+      tipo: tipo ?? this.tipo,
+      urlMidia: urlMidia ?? this.urlMidia,
+      metadados: metadados ?? this.metadados,
+    );
+  }
 
-  // Formatar data para exibição
   String get horaFormatada {
     return '${enviadoEm.hour.toString().padLeft(2, '0')}:${enviadoEm.minute.toString().padLeft(2, '0')}';
   }
 
-  // Formatar data completa
   String get dataCompleta {
     return '${enviadoEm.day}/${enviadoEm.month}/${enviadoEm.year} $horaFormatada';
   }
 
-  // Verificar se a mensagem foi enviada hoje
   bool get isHoje {
     final now = DateTime.now();
     return enviadoEm.year == now.year &&
@@ -184,7 +170,6 @@ MensagemModel copyWith({
            enviadoEm.day == now.day;
   }
 
-  // Verificar se a mensagem foi enviada ontem
   bool get isOntem {
     final yesterday = DateTime.now().subtract(const Duration(days: 1));
     return enviadoEm.year == yesterday.year &&
@@ -213,5 +198,77 @@ MensagemModel copyWith({
         texto.hashCode ^
         remetenteId.hashCode ^
         enviadoEm.hashCode;
+  }
+}
+
+class ChatModel {
+  final String? id;
+  final List<String> participantesIds;
+  final List<String> participantesNomes;
+  final MensagemModel? ultimaMensagem;
+  final DateTime? criadoEm;
+  final DateTime? atualizadoEm;
+
+  ChatModel({
+    this.id,
+    required this.participantesIds,
+    required this.participantesNomes,
+    this.ultimaMensagem,
+    this.criadoEm,
+    this.atualizadoEm,
+  });
+
+  factory ChatModel.fromFirestore(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    
+    MensagemModel? ultimaMsg;
+    if (data['ultimaMensagem'] != null) {
+      final msgData = data['ultimaMensagem'] as Map<String, dynamic>;
+      ultimaMsg = MensagemModel(
+        id: '',
+        texto: msgData['texto'] ?? '',
+        remetenteId: msgData['remetenteId'] ?? '',
+        remetenteNome: msgData['remetenteNome'] ?? '',
+        enviadoEm: msgData['enviadoEm']?.toDate() ?? DateTime.now(),
+        lida: msgData['lida'] ?? false,
+      );
+    }
+
+    return ChatModel(
+      id: doc.id,
+      participantesIds: List<String>.from(data['participantesIds'] ?? []),
+      participantesNomes: List<String>.from(data['participantesNomes'] ?? []),
+      ultimaMensagem: ultimaMsg,
+      criadoEm: data['criadoEm']?.toDate(),
+      atualizadoEm: data['atualizadoEm']?.toDate(),
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'participantesIds': participantesIds,
+      'participantesNomes': participantesNomes,
+      'ultimaMensagem': ultimaMensagem?.toFirestore(),
+      'criadoEm': FieldValue.serverTimestamp(),
+      'atualizadoEm': FieldValue.serverTimestamp(),
+    };
+  }
+
+  ChatModel copyWith({
+    String? id,
+    List<String>? participantesIds,
+    List<String>? participantesNomes,
+    MensagemModel? ultimaMensagem,
+    DateTime? criadoEm,
+    DateTime? atualizadoEm,
+  }) {
+    return ChatModel(
+      id: id ?? this.id,
+      participantesIds: participantesIds ?? this.participantesIds,
+      participantesNomes: participantesNomes ?? this.participantesNomes,
+      ultimaMensagem: ultimaMensagem ?? this.ultimaMensagem,
+      criadoEm: criadoEm ?? this.criadoEm,
+      atualizadoEm: atualizadoEm ?? this.atualizadoEm,
+    );
   }
 }

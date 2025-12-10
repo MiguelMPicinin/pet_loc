@@ -49,11 +49,15 @@ class DesaparecidoModel {
       'imagemBase64': imagemBase64 ?? '',
       'userId': userId,
       'encontrado': encontrado,
-      'criadoEm': FieldValue.serverTimestamp(),
+      'criadoEm': criadoEm != null 
+          ? Timestamp.fromDate(criadoEm!) 
+          : FieldValue.serverTimestamp(),
       'desaparecidoEm': desaparecidoEm != null 
           ? Timestamp.fromDate(desaparecidoEm!) 
           : FieldValue.serverTimestamp(),
-      'atualizadoEm': FieldValue.serverTimestamp(),
+      'atualizadoEm': atualizadoEm != null 
+          ? Timestamp.fromDate(atualizadoEm!) 
+          : FieldValue.serverTimestamp(),
     };
   }
 

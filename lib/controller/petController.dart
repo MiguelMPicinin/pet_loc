@@ -16,18 +16,15 @@ class PetController with ChangeNotifier {
   String? _error;
   File? _selectedImage;
 
-  // Getters
   List<PetModel> get pets => _pets;
   bool get isLoading => _isLoading;
   String? get error => _error;
   File? get selectedImage => _selectedImage;
 
-  // Inicializar controller
   PetController() {
     _loadPets();
   }
 
-  // Carregar pets DO USUÁRIO ATUAL
   Future<void> _loadPets() async {
     try {
       _setLoading(true);
@@ -36,12 +33,13 @@ class PetController with ChangeNotifier {
       final usuarioAtual = _auth.currentUser;
       if (usuarioAtual == null) {
         _setLoading(false);
+        notifyListeners();
         return;
       }
       
       final querySnapshot = await _firestore
           .collection('pets')
-          .where('userId', isEqualTo: usuarioAtual.uid) // FILTRAR POR USUÁRIO
+          .where('userId', isEqualTo: usuarioAtual.uid)
           .orderBy('criadoEm', descending: true)
           .get();
       
@@ -50,6 +48,7 @@ class PetController with ChangeNotifier {
       }).toList();
       
       _setLoading(false);
+      notifyListeners();
     } catch (e) {
       _error = 'Erro ao carregar pets: $e';
       _setLoading(false);
@@ -57,7 +56,6 @@ class PetController with ChangeNotifier {
     }
   }
 
-  // Stream de pets DO USUÁRIO ATUAL para atualização em tempo real
   Stream<List<PetModel>> get petsStream {
     final usuarioAtual = _auth.currentUser;
     if (usuarioAtual == null) {
@@ -66,7 +64,7 @@ class PetController with ChangeNotifier {
     
     return _firestore
         .collection('pets')
-        .where('userId', isEqualTo: usuarioAtual.uid) // FILTRAR POR USUÁRIO
+        .where('userId', isEqualTo: usuarioAtual.uid)
         .orderBy('criadoEm', descending: true)
         .snapshots()
         .map((snapshot) {
@@ -76,8 +74,7 @@ class PetController with ChangeNotifier {
     });
   }
 
-  // Cadastrar novo pet PARA O USUÁRIO ATUAL
-  Future<bool> cadastrarPet({
+  Future<String?> cadastrarPet({
     required String nome,
     required String descricao,
     required String contato,
@@ -90,44 +87,62 @@ class PetController with ChangeNotifier {
       if (usuarioAtual == null) {
         _error = 'Usuário não autenticado';
         _setLoading(false);
-        return false;
+        notifyListeners();
+        return null;
       }
 
       String? imagemBase64;
       if (_selectedImage != null) {
-        final bytes = await _selectedImage!.readAsBytes();
-        imagemBase64 = base64Encode(bytes);
+        try {
+          final bytes = await _selectedImage!.readAsBytes();
+          if (bytes.length > 5 * 1024 * 1024) {
+            _error = 'Imagem muito grande (máximo 5MB)';
+            _setLoading(false);
+            notifyListeners();
+            return null;
+          }
+          imagemBase64 = base64Encode(bytes);
+        } catch (e) {}
       }
 
-      final pet = PetModel(
+      final petData = {
+        'nome': nome,
+        'descricao': descricao,
+        'contato': contato,
+        'imagemBase64': imagemBase64 ?? '',
+        'userId': usuarioAtual.uid,
+        'criadoEm': FieldValue.serverTimestamp(),
+        'atualizadoEm': FieldValue.serverTimestamp(),
+      };
+
+      final docRef = await _firestore.collection('pets').add(petData);
+      final petId = docRef.id;
+
+      final novoPet = PetModel(
+        id: petId,
         nome: nome,
         descricao: descricao,
         contato: contato,
         imagemBase64: imagemBase64,
-        userId: usuarioAtual.uid, // USAR O ID DO USUÁRIO ATUAL
+        userId: usuarioAtual.uid,
+        criadoEm: DateTime.now(),
+        atualizadoEm: DateTime.now(),
       );
 
-      final docRef = await _firestore
-          .collection('pets')
-          .add(pet.toFirestore());
-
-      // Adicionar à lista local com o ID gerado
-      _pets.insert(0, pet.copyWith(id: docRef.id));
-
+      _pets.insert(0, novoPet);
       _clearImage();
       _setLoading(false);
       notifyListeners();
       
-      return true;
+      return petId;
     } catch (e) {
       _error = 'Erro ao cadastrar pet: $e';
       _setLoading(false);
       notifyListeners();
-      return false;
+      return null;
     }
   }
 
-  // Editar pet (VERIFICANDO SE É DO USUÁRIO)
   Future<bool> editarPet({
     required String petId,
     required String nome,
@@ -143,10 +158,10 @@ class PetController with ChangeNotifier {
       if (usuarioAtual == null) {
         _error = 'Usuário não autenticado';
         _setLoading(false);
+        notifyListeners();
         return false;
       }
 
-      // Verificar se o pet pertence ao usuário
       final petIndex = _pets.indexWhere((pet) => pet.id == petId);
       if (petIndex == -1) {
         _error = 'Pet não encontrado';
@@ -165,8 +180,16 @@ class PetController with ChangeNotifier {
 
       String? imagemBase64;
       if (novaImagem != null) {
-        final bytes = await novaImagem.readAsBytes();
-        imagemBase64 = base64Encode(bytes);
+        try {
+          final bytes = await novaImagem.readAsBytes();
+          if (bytes.length > 5 * 1024 * 1024) {
+            _error = 'Imagem muito grande (máximo 5MB)';
+            _setLoading(false);
+            notifyListeners();
+            return false;
+          }
+          imagemBase64 = base64Encode(bytes);
+        } catch (e) {}
       }
 
       final imagemParaSalvar = imagemBase64 ?? petAtual.imagemBase64;
@@ -179,12 +202,12 @@ class PetController with ChangeNotifier {
         'atualizadoEm': FieldValue.serverTimestamp(),
       });
 
-      // Atualizar lista local
       _pets[petIndex] = petAtual.copyWith(
         nome: nome,
         descricao: descricao,
         contato: contato,
         imagemBase64: imagemParaSalvar,
+        atualizadoEm: DateTime.now(),
       );
 
       _setLoading(false);
@@ -198,7 +221,6 @@ class PetController with ChangeNotifier {
     }
   }
 
-  // Deletar pet (VERIFICANDO SE É DO USUÁRIO)
   Future<bool> deletarPet(String petId) async {
     try {
       _setLoading(true);
@@ -211,7 +233,6 @@ class PetController with ChangeNotifier {
         return false;
       }
 
-      // Verificar se o pet pertence ao usuário
       final pet = _pets.firstWhere((p) => p.id == petId);
       if (pet.userId != usuarioAtual.uid) {
         _error = 'Você só pode deletar seus próprios pets';
@@ -220,7 +241,6 @@ class PetController with ChangeNotifier {
       }
 
       await _firestore.collection('pets').doc(petId).delete();
-
       _pets.removeWhere((pet) => pet.id == petId);
       _setLoading(false);
       notifyListeners();
@@ -234,7 +254,6 @@ class PetController with ChangeNotifier {
     }
   }
 
-  // Buscar pet por ID
   PetModel? getPetById(String petId) {
     try {
       return _pets.firstWhere((pet) => pet.id == petId);
@@ -243,7 +262,6 @@ class PetController with ChangeNotifier {
     }
   }
 
-  // Verificar se o usuário é dono do pet
   bool isPetDoUsuario(String petId) {
     final usuarioAtual = _auth.currentUser;
     if (usuarioAtual == null) return false;
@@ -256,7 +274,6 @@ class PetController with ChangeNotifier {
     }
   }
 
-  // Selecionar imagem da galeria
   Future<void> selecionarImagem() async {
     try {
       final XFile? pickedFile = await _imagePicker.pickImage(
@@ -275,7 +292,6 @@ class PetController with ChangeNotifier {
     }
   }
 
-  // Tirar foto com câmera
   Future<void> tirarFoto() async {
     try {
       final XFile? pickedFile = await _imagePicker.pickImage(
@@ -294,19 +310,16 @@ class PetController with ChangeNotifier {
     }
   }
 
-  // Método público para remover imagem selecionada
   void removerImagemSelecionada() {
     _selectedImage = null;
     notifyListeners();
   }
 
-  // Limpar imagem selecionada (método privado)
   void _clearImage() {
     _selectedImage = null;
     notifyListeners();
   }
 
-  // Buscar pets por nome
   List<PetModel> buscarPets(String query) {
     if (query.isEmpty) return _pets;
     
@@ -316,7 +329,6 @@ class PetController with ChangeNotifier {
     }).toList();
   }
 
-  // Buscar pets do usuário atual
   List<PetModel> getPetsDoUsuario() {
     final usuarioAtual = _auth.currentUser;
     if (usuarioAtual == null) return [];
@@ -324,19 +336,16 @@ class PetController with ChangeNotifier {
     return _pets.where((pet) => pet.userId == usuarioAtual.uid).toList();
   }
 
-  // Controlar estado de loading
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
   }
 
-  // Limpar erros
   void clearError() {
     _error = null;
     notifyListeners();
   }
 
-  // Forçar recarregamento
   Future<void> refresh() async {
     await _loadPets();
   }

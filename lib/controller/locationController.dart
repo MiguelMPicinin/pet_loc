@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../models/location_model.dart';
+import '../models/user_model.dart';
 
 class LocationController extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -16,34 +16,77 @@ class LocationController extends ChangeNotifier {
   String? _error;
   bool _locationEnabled = false;
   StreamSubscription<Position>? _positionStream;
-  Map<String, List<LocationModel>> _petLocations = {};
+  
+  final Map<String, List<LocationModel>> _locations = {};
+  final Map<String, StreamSubscription<QuerySnapshot>> _locationStreams = {};
+  final Map<String, DateTime> _lastUpdateTime = {};
+  final Map<String, List<VoidCallback>> _locationListeners = {};
+  
+  Timer? _syncTimer;
+  UserModel? _currentUser;
 
-  // Getters
   Position? get currentPosition => _currentPosition;
   LocationModel? get currentLocation => _currentLocation;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get locationEnabled => _locationEnabled;
 
-  // Obter localizações de um pet específico
-  List<LocationModel> getPetLocations(String petId) {
-    return _petLocations[petId] ?? [];
+  void setUser(UserModel? user) {
+    _currentUser = user;
+    notifyListeners();
   }
 
-  // Obter localização mais recente do pet
+  List<LocationModel> getPetLocations(String petId) {
+    return _locations[petId] ?? [];
+  }
+
+  List<LocationModel> getAllPetLocations(String petId) {
+    return getPetLocations(petId);
+  }
+
   LocationModel? getLatestPetLocation(String petId) {
     final locations = getPetLocations(petId);
     if (locations.isEmpty) return null;
     
+    locations.sort((a, b) => b.effectiveTimestamp.compareTo(a.effectiveTimestamp));
     return locations.first;
   }
 
-  // Inicializar controller
+  bool isListenerHealthy(String petId) {
+    if (!_locationStreams.containsKey(petId)) {
+      return false;
+    }
+    
+    final lastUpdate = _lastUpdateTime[petId];
+    if (lastUpdate == null) {
+      return false;
+    }
+    
+    final now = DateTime.now();
+    final difference = now.difference(lastUpdate);
+    
+    return difference.inSeconds < 120;
+  }
+
+  void addLocationListener(String petId, VoidCallback callback) {
+    if (!_locationListeners.containsKey(petId)) {
+      _locationListeners[petId] = [];
+    }
+    _locationListeners[petId]!.add(callback);
+  }
+
+  void removeLocationListener(String petId, VoidCallback callback) {
+    _locationListeners[petId]?.remove(callback);
+  }
+
+  void _notifyLocationListeners(String petId) {
+    _locationListeners[petId]?.forEach((listener) => listener());
+  }
+
   LocationController() {
     _initializeLocation();
   }
 
-  // Inicializar serviços de localização
   Future<void> _initializeLocation() async {
     try {
       _setLoading(true);
@@ -52,7 +95,7 @@ class LocationController extends ChangeNotifier {
       
       if (_locationEnabled) {
         await _checkPermissions();
-        await _getInitialLocation(); // CORREÇÃO: método renomeado
+        await _getInitialLocation();
         await _startLocationStream();
       }
       
@@ -64,14 +107,12 @@ class LocationController extends ChangeNotifier {
     }
   }
 
-  // CORREÇÃO: Método _getCurrentLocation renomeado para _getInitialLocation
   Future<void> _getInitialLocation() async {
     try {
       _currentPosition = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      // Obter endereço das coordenadas
       String endereco = await _getAddressFromCoordinates(
         _currentPosition!.latitude,
         _currentPosition!.longitude,
@@ -86,13 +127,9 @@ class LocationController extends ChangeNotifier {
 
       _currentLocation = location;
       notifyListeners();
-    } catch (e) {
-      _error = 'Erro ao obter localização inicial: $e';
-      notifyListeners();
-    }
+    } catch (e) {}
   }
 
-  // Verificar e solicitar permissões
   Future<bool> _checkPermissions() async {
     try {
       LocationPermission permission = await Geolocator.checkPermission();
@@ -119,7 +156,6 @@ class LocationController extends ChangeNotifier {
     }
   }
 
-  // Obter localização atual
   Future<LocationModel?> getCurrentLocationWithAddress() async {
     try {
       _setLoading(true);
@@ -134,7 +170,6 @@ class LocationController extends ChangeNotifier {
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      // Obter endereço das coordenadas
       String endereco = await _getAddressFromCoordinates(
         _currentPosition!.latitude,
         _currentPosition!.longitude,
@@ -158,7 +193,6 @@ class LocationController extends ChangeNotifier {
     }
   }
 
-  // Obter endereço a partir das coordenadas
   Future<String> _getAddressFromCoordinates(double lat, double lng) async {
     try {
       final places = await placemarkFromCoordinates(lat, lng);
@@ -180,7 +214,6 @@ class LocationController extends ChangeNotifier {
     }
   }
 
-  // Iniciar stream de localização em tempo real
   Future<void> _startLocationStream() async {
     try {
       final hasPermission = await _checkPermissions();
@@ -189,18 +222,15 @@ class LocationController extends ChangeNotifier {
       _positionStream = Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.best,
-          distanceFilter: 10, // metros
+          distanceFilter: 10,
         ),
       ).listen((Position position) {
         _currentPosition = position;
         notifyListeners();
       });
-    } catch (e) {
-      print('Erro ao iniciar stream de localização: $e');
-    }
+    } catch (e) {}
   }
 
-  // Salvar localização do pet no Firestore
   Future<bool> savePetLocation({
     required String petId,
     required LocationModel location,
@@ -215,19 +245,24 @@ class LocationController extends ChangeNotifier {
         petId: petId,
         encontradoPor: encontradoPor,
         telefoneEncontrado: telefoneEncontrado,
+        isQRCodeLocation: false,
+        source: 'app',
       );
 
-      await _firestore.collection('pet_locations').add(
-        locationWithPet.toFirestore(),
-      );
-
-      // Adicionar à lista local
-      if (_petLocations[petId] == null) {
-        _petLocations[petId] = [];
+      final firestoreData = locationWithPet.toFirestore();
+      if (_currentUser != null) {
+        firestoreData['userId'] = _currentUser!.id;
       }
-      _petLocations[petId]!.insert(0, locationWithPet);
+
+      await _firestore.collection('pet_locations').add(firestoreData);
+
+      if (_locations[petId] == null) {
+        _locations[petId] = [];
+      }
+      _locations[petId]!.insert(0, locationWithPet);
       
       _setLoading(false);
+      _notifyLocationListeners(petId);
       notifyListeners();
       return true;
     } catch (e) {
@@ -238,25 +273,119 @@ class LocationController extends ChangeNotifier {
     }
   }
 
-  // Carregar localizações de um pet
-  Future<void> loadPetLocations(String petId) async {
+  Future<bool> saveQRCodeLocation({
+    required String petId,
+    required double latitude,
+    required double longitude,
+    required String address,
+    required String finderName,
+    required String finderPhone,
+  }) async {
     try {
       _setLoading(true);
       _error = null;
 
+      if (!LocationModel(
+        latitude: latitude,
+        longitude: longitude,
+        endereco: address,
+      ).isValid) {
+        throw Exception('Coordenadas inválidas');
+      }
+
+      final locationData = {
+        'petId': petId,
+        'latitude': latitude,
+        'longitude': longitude,
+        'endereco': address,
+        'address': address,
+        'encontradoPor': finderName,
+        'finderName': finderName,
+        'telefoneEncontrado': finderPhone,
+        'finderPhone': finderPhone,
+        'timestamp': FieldValue.serverTimestamp(),
+        'timestamp_client': DateTime.now().toIso8601String(),
+        'source': 'qr_code',
+        'isQRCodeLocation': true,
+        'confirmado': false,
+        'status': 'active',
+        'validatedAt': FieldValue.serverTimestamp(),
+      };
+
+      if (_currentUser != null) {
+        locationData['userId'] = _currentUser!.id;
+      }
+
+      final docRef = await _firestore.collection('pet_locations').add(locationData);
+
+      final location = LocationModel(
+        id: docRef.id,
+        petId: petId,
+        latitude: latitude,
+        longitude: longitude,
+        endereco: address,
+        encontradoPor: finderName,
+        telefoneEncontrado: finderPhone,
+        timestamp: DateTime.now(),
+        isQRCodeLocation: true,
+        confirmado: false,
+        source: 'qr_code',
+        finderName: finderName,
+        finderPhone: finderPhone,
+      );
+
+      if (_locations[petId] == null) {
+        _locations[petId] = [];
+      }
+      _locations[petId]!.insert(0, location);
+      
+      _setLoading(false);
+      _notifyLocationListeners(petId);
+      notifyListeners();
+      
+      return true;
+    } catch (e) {
+      _error = 'Erro ao salvar localização QR Code: $e';
+      _setLoading(false);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<void> loadAllPetLocations(String petId) async {
+    try {
+      _setLoading(true);
+      _error = null;
+      
+      await startPetLocationListener(petId);
+      
       final snapshot = await _firestore
           .collection('pet_locations')
           .where('petId', isEqualTo: petId)
           .orderBy('timestamp', descending: true)
+          .limit(50)
           .get();
-
-      final locations = snapshot.docs.map((doc) {
-        return LocationModel.fromFirestore(doc.data(), doc.id);
-      }).toList();
-
-      _petLocations[petId] = locations;
+      
+      final List<LocationModel> allLocations = [];
+      
+      for (var doc in snapshot.docs) {
+        try {
+          final data = doc.data() as Map<String, dynamic>;
+          final location = LocationModel.fromFirestore(data, doc.id);
+          
+          if (location.isValid) {
+            allLocations.add(location);
+          }
+        } catch (e) {}
+      }
+      
+      allLocations.sort((a, b) => b.effectiveTimestamp.compareTo(a.effectiveTimestamp));
+      
+      _locations[petId] = allLocations;
+      _lastUpdateTime[petId] = DateTime.now();
       
       _setLoading(false);
+      _notifyLocationListeners(petId);
       notifyListeners();
     } catch (e) {
       _error = 'Erro ao carregar localizações: $e';
@@ -265,9 +394,51 @@ class LocationController extends ChangeNotifier {
     }
   }
 
-  // Calcular distância entre duas localizações
+  Future<void> startPetLocationListener(String petId) async {
+    try {
+      _locationStreams[petId]?.cancel();
+      
+      final stream = _firestore
+          .collection('pet_locations')
+          .where('petId', isEqualTo: petId)
+          .orderBy('timestamp', descending: true)
+          .snapshots();
+      
+      _locationStreams[petId] = stream.listen((snapshot) {
+        final List<LocationModel> allLocations = [];
+        
+        for (var doc in snapshot.docs) {
+          try {
+            final data = doc.data() as Map<String, dynamic>;
+            final location = LocationModel.fromFirestore(data, doc.id);
+            
+            if (location.isValid) {
+              allLocations.add(location);
+            }
+          } catch (e) {}
+        }
+        
+        allLocations.sort((a, b) => b.effectiveTimestamp.compareTo(a.effectiveTimestamp));
+        
+        _locations[petId] = allLocations;
+        _lastUpdateTime[petId] = DateTime.now();
+        
+        _notifyLocationListeners(petId);
+        notifyListeners();
+        
+      }, onError: (error) {
+        _error = 'Erro no listener: $error';
+        notifyListeners();
+      });
+      
+    } catch (e) {
+      _error = 'Erro ao iniciar listener: $e';
+      notifyListeners();
+    }
+  }
+
   double calculateDistance(LocationModel loc1, LocationModel loc2) {
-    const earthRadius = 6371.0; // km
+    const earthRadius = 6371.0;
 
     final lat1 = _degreesToRadians(loc1.latitude);
     final lon1 = _degreesToRadians(loc1.longitude);
@@ -289,18 +460,20 @@ class LocationController extends ChangeNotifier {
     return degrees * pi / 180;
   }
 
-  // Forçar recarregamento das localizações
   Future<void> refreshPetLocations(String petId) async {
-    await loadPetLocations(petId);
+    await loadAllPetLocations(petId);
   }
 
-  // Limpar erros
+  void stopPetLocationListener(String petId) {
+    _locationStreams[petId]?.cancel();
+    _locationStreams.remove(petId);
+  }
+
   void clearError() {
     _error = null;
     notifyListeners();
   }
 
-  // Controlar estado de loading
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
@@ -309,6 +482,12 @@ class LocationController extends ChangeNotifier {
   @override
   void dispose() {
     _positionStream?.cancel();
+    
+    _locationStreams.values.forEach((stream) => stream.cancel());
+    _locationStreams.clear();
+    
+    _syncTimer?.cancel();
+    
     super.dispose();
   }
 }

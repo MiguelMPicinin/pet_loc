@@ -12,7 +12,6 @@ class ChatController with ChangeNotifier {
   String? _error;
   String? _grupoSelecionadoId;
 
-  // Getters
   List<Map<String, dynamic>> get grupos => _grupos;
   List<Map<String, dynamic>> get mensagens => _mensagens;
   bool get isLoading => _isLoading;
@@ -28,7 +27,6 @@ class ChatController with ChangeNotifier {
     }
   }
 
-  // Carregar grupos
   Future<void> carregarGrupos() async {
     try {
       _setLoading(true);
@@ -66,7 +64,6 @@ class ChatController with ChangeNotifier {
     }
   }
 
-  // Stream de grupos para atualização em tempo real
   Stream<List<Map<String, dynamic>>> get gruposStream {
     return _firestore
         .collection('chat_grupos')
@@ -93,7 +90,6 @@ class ChatController with ChangeNotifier {
         }).toList());
   }
 
-  // Stream de mensagens de um grupo específico
   Stream<List<Map<String, dynamic>>> mensagensStream(String grupoId) {
     return _firestore
         .collection('chat_grupos')
@@ -114,7 +110,6 @@ class ChatController with ChangeNotifier {
         }).toList());
   }
 
-  // Criar novo grupo
   Future<bool> criarGrupo({
     required String nome,
     required String descricao,
@@ -157,7 +152,6 @@ class ChatController with ChangeNotifier {
     }
   }
 
-  // Entrar em um grupo
   Future<bool> entrarNoGrupo(String grupoId) async {
     try {
       _error = null;
@@ -182,7 +176,6 @@ class ChatController with ChangeNotifier {
     }
   }
 
-  // Enviar mensagem
   Future<bool> enviarMensagem({
     required String grupoId,
     required String texto,
@@ -209,14 +202,12 @@ class ChatController with ChangeNotifier {
         'lida': false,
       };
 
-      // Adicionar mensagem à subcoleção
       await _firestore
           .collection('chat_grupos')
           .doc(grupoId)
           .collection('mensagens')
           .add(mensagem);
 
-      // Atualizar última mensagem no grupo
       await _firestore
           .collection('chat_grupos')
           .doc(grupoId)
@@ -232,7 +223,6 @@ class ChatController with ChangeNotifier {
     }
   }
 
-  // Carregar mensagens de um grupo
   Future<void> carregarMensagens(String grupoId) async {
     try {
       _setLoading(true);
@@ -265,7 +255,6 @@ class ChatController with ChangeNotifier {
     }
   }
 
-  // Deletar mensagem
   Future<bool> deletarMensagem({
     required String grupoId,
     required String mensagemId,
@@ -277,7 +266,6 @@ class ChatController with ChangeNotifier {
         return false;
       }
 
-      // Verificar se o usuário é o remetente da mensagem
       final mensagemDoc = await _firestore
           .collection('chat_grupos')
           .doc(grupoId)
@@ -303,10 +291,8 @@ class ChatController with ChangeNotifier {
           .doc(mensagemId)
           .delete();
 
-      // Remover da lista local
       _mensagens.removeWhere((msg) => msg['id'] == mensagemId);
 
-      // Atualizar última mensagem se necessário
       await _atualizarUltimaMensagem(grupoId);
 
       return true;
@@ -316,7 +302,6 @@ class ChatController with ChangeNotifier {
     }
   }
 
-  // Atualizar última mensagem do grupo
   Future<void> _atualizarUltimaMensagem(String grupoId) async {
     try {
       final snapshot = await _firestore
@@ -337,7 +322,6 @@ class ChatController with ChangeNotifier {
               'ultimaMensagemData': FieldValue.serverTimestamp(),
             });
       } else {
-        // Se não há mensagens, limpar última mensagem
         await _firestore
             .collection('chat_grupos')
             .doc(grupoId)
@@ -351,7 +335,6 @@ class ChatController with ChangeNotifier {
     }
   }
 
-  // Deletar grupo
   Future<bool> deletarGrupo(String grupoId) async {
     try {
       _setLoading(true);
@@ -364,7 +347,6 @@ class ChatController with ChangeNotifier {
         return false;
       }
 
-      // Verificar se o usuário é o criador do grupo
       final grupo = _grupos.firstWhere((g) => g['id'] == grupoId);
       if (grupo['criadorId'] != usuarioAtual.uid) {
         _error = 'Apenas o criador do grupo pode deletá-lo';
@@ -372,7 +354,6 @@ class ChatController with ChangeNotifier {
         return false;
       }
 
-      // Deletar todas as mensagens primeiro
       final mensagensSnapshot = await _firestore
           .collection('chat_grupos')
           .doc(grupoId)
@@ -385,10 +366,8 @@ class ChatController with ChangeNotifier {
       }
       await batch.commit();
 
-      // Deletar o grupo
       await _firestore.collection('chat_grupos').doc(grupoId).delete();
 
-      // Remover da lista local
       _grupos.removeWhere((g) => g['id'] == grupoId);
       if (_grupoSelecionadoId == grupoId) {
         _grupoSelecionadoId = null;
@@ -404,7 +383,6 @@ class ChatController with ChangeNotifier {
     }
   }
 
-  // Buscar grupos por nome ou categoria
   List<Map<String, dynamic>> buscarGrupos(String query) {
     if (query.isEmpty) return _grupos;
     
@@ -415,20 +393,17 @@ class ChatController with ChangeNotifier {
     }).toList();
   }
 
-  // Verificar se o usuário é membro de um grupo
   bool isMembroDoGrupo(Map<String, dynamic> grupo) {
     final usuarioAtual = _auth.currentUser;
     if (usuarioAtual == null) return false;
     return (grupo['membros'] as List).contains(usuarioAtual.uid);
   }
 
-  // Verificar se uma mensagem foi enviada pelo usuário atual
   bool isMensagemDoUsuarioAtual(Map<String, dynamic> mensagem) {
     final usuarioAtual = _auth.currentUser;
     return usuarioAtual != null && mensagem['remetenteId'] == usuarioAtual.uid;
   }
 
-  // Obter ícone por categoria
   String _getIconePorCategoria(String categoria) {
     switch (categoria) {
       case 'Adoção':
@@ -446,26 +421,22 @@ class ChatController with ChangeNotifier {
     }
   }
 
-  // Limpar mensagens do grupo atual
   void limparMensagens() {
     _mensagens.clear();
     _grupoSelecionadoId = null;
     notifyListeners();
   }
 
-  // Controlar estado de loading
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
   }
 
-  // Limpar erros
   void clearError() {
     _error = null;
     notifyListeners();
   }
 
-  // Forçar recarregamento
   Future<void> refresh() async {
     await carregarGrupos();
   }

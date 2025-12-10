@@ -12,7 +12,6 @@ class GroupChatController with ChangeNotifier {
   String? _error;
   String? _grupoSelecionadoId;
 
-  // Getters
   List<Map<String, dynamic>> get grupos => _grupos;
   List<Map<String, dynamic>> get mensagens => _mensagens;
   bool get isLoading => _isLoading;
@@ -28,7 +27,6 @@ class GroupChatController with ChangeNotifier {
     }
   }
 
-  // Carregar grupos
   Future<void> carregarGrupos() async {
     try {
       _setLoading(true);
@@ -66,7 +64,6 @@ class GroupChatController with ChangeNotifier {
     }
   }
 
-  // Stream de grupos para atualização em tempo real
   Stream<List<Map<String, dynamic>>> get gruposStream {
     return _firestore
         .collection('chat_grupos')
@@ -93,26 +90,22 @@ class GroupChatController with ChangeNotifier {
         }).toList());
   }
 
-  // Stream de mensagens de um grupo específico - ESTRUTURA PADRONIZADA
   Stream<List<Map<String, dynamic>>> mensagensStream(String grupoId) {
     return _firestore
         .collection('chat_grupos')
         .doc(grupoId)
         .collection('mensagens')
-        .orderBy('timestamp', descending: false) // Campo padronizado
+        .orderBy('timestamp', descending: false)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) {
           final data = doc.data();
-          // ESTRUTURA PADRONIZADA - MESMA DO WEB
           return {
             'id': doc.id,
             'texto': data['texto'] ?? '',
-            // Campos padronizados
-            'userId': data['userId'] ?? data['remetenteId'] ?? '', // Compatibilidade
-            'userName': data['userName'] ?? data['remetenteNome'] ?? 'Usuário', // Compatibilidade
+            'userId': data['userId'] ?? data['remetenteId'] ?? '',
+            'userName': data['userName'] ?? data['remetenteNome'] ?? 'Usuário',
             'userPhotoURL': data['userPhotoURL'] ?? '',
-            'timestamp': data['timestamp'] ?? data['enviadoEm'], // Compatibilidade
-            // Campos de compatibilidade (mantidos para mensagens antigas)
+            'timestamp': data['timestamp'] ?? data['enviadoEm'],
             'remetenteId': data['userId'] ?? data['remetenteId'] ?? '',
             'remetenteNome': data['userName'] ?? data['remetenteNome'] ?? 'Usuário',
             'enviadoEm': data['timestamp'] ?? data['enviadoEm'],
@@ -121,7 +114,6 @@ class GroupChatController with ChangeNotifier {
         }).toList());
   }
 
-  // Criar novo grupo - ESTRUTURA PADRONIZADA
   Future<bool> criarGrupo({
     required String nome,
     required String descricao,
@@ -165,7 +157,6 @@ class GroupChatController with ChangeNotifier {
     }
   }
 
-  // Entrar em um grupo
   Future<bool> entrarNoGrupo(String grupoId) async {
     try {
       _error = null;
@@ -190,7 +181,6 @@ class GroupChatController with ChangeNotifier {
     }
   }
 
-  // Enviar mensagem - ESTRUTURA PADRONIZADA
   Future<bool> enviarMensagem({
     required String grupoId,
     required String texto,
@@ -209,29 +199,24 @@ class GroupChatController with ChangeNotifier {
         return false;
       }
 
-      // ESTRUTURA PADRONIZADA - MESMA DO WEB
       final mensagem = {
         'texto': texto.trim(),
-        // Campos padronizados
         'userId': usuarioAtual.uid,
         'userName': usuarioAtual.displayName ?? 'Usuário',
         'userPhotoURL': usuarioAtual.photoURL ?? '',
         'timestamp': FieldValue.serverTimestamp(),
-        // Campos de compatibilidade (opcionais)
         'remetenteId': usuarioAtual.uid,
         'remetenteNome': usuarioAtual.displayName ?? 'Usuário',
         'enviadoEm': FieldValue.serverTimestamp(),
         'lida': false,
       };
 
-      // Adicionar mensagem à subcoleção
       await _firestore
           .collection('chat_grupos')
           .doc(grupoId)
           .collection('mensagens')
           .add(mensagem);
 
-      // Atualizar última mensagem no grupo
       await _firestore
           .collection('chat_grupos')
           .doc(grupoId)
@@ -248,24 +233,20 @@ class GroupChatController with ChangeNotifier {
     }
   }
 
-  // Verificar se o usuário é membro de um grupo
   bool isMembroDoGrupo(Map<String, dynamic> grupo) {
     final usuarioAtual = _auth.currentUser;
     if (usuarioAtual == null) return false;
     return (grupo['membros'] as List).contains(usuarioAtual.uid);
   }
 
-  // Verificar se uma mensagem foi enviada pelo usuário atual
   bool isMensagemDoUsuarioAtual(Map<String, dynamic> mensagem) {
     final usuarioAtual = _auth.currentUser;
     if (usuarioAtual == null) return false;
     
-    // Verifica tanto o campo padronizado quanto o de compatibilidade
     final userId = mensagem['userId'] ?? mensagem['remetenteId'];
     return userId == usuarioAtual.uid;
   }
 
-  // Obter ícone por categoria
   String _getIconePorCategoria(String categoria) {
     switch (categoria) {
       case 'Adoção':
@@ -297,13 +278,11 @@ class GroupChatController with ChangeNotifier {
     }
   }
 
-  // Controlar estado de loading
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
   }
 
-  // Limpar erros
   void clearError() {
     _error = null;
     notifyListeners();

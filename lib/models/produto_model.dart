@@ -13,7 +13,7 @@ class ProdutoModel {
   final DateTime? atualizadoEm;
   final int? estoque;
   final bool ativo;
-  final String? categoria; // ADICIONE ESTE CAMPO
+  final String? categoria;
 
   ProdutoModel({
     this.id,
@@ -28,7 +28,7 @@ class ProdutoModel {
     this.atualizadoEm,
     this.estoque,
     this.ativo = true,
-    this.categoria, // ADICIONE ESTE PARÂMETRO
+    this.categoria,
   });
 
   factory ProdutoModel.fromFirestore(DocumentSnapshot doc) {
@@ -46,7 +46,7 @@ class ProdutoModel {
       atualizadoEm: data['atualizadoEm']?.toDate(),
       estoque: data['estoque'],
       ativo: data['ativo'] ?? true,
-      categoria: data['categoria'] ?? 'Geral', // ADICIONE ESTA LINHA
+      categoria: data['categoria'] ?? 'Geral',
     );
   }
 
@@ -59,11 +59,15 @@ class ProdutoModel {
       'imagemBase64': imagemBase64 ?? '',
       'lojaId': lojaId,
       'userId': userId,
-      'criadoEm': FieldValue.serverTimestamp(),
-      'atualizadoEm': FieldValue.serverTimestamp(),
+      'criadoEm': criadoEm != null 
+          ? Timestamp.fromDate(criadoEm!) 
+          : FieldValue.serverTimestamp(),
+      'atualizadoEm': atualizadoEm != null 
+          ? Timestamp.fromDate(atualizadoEm!) 
+          : FieldValue.serverTimestamp(),
       'estoque': estoque,
       'ativo': ativo,
-      'categoria': categoria ?? 'Geral', // ADICIONE ESTA LINHA
+      'categoria': categoria ?? 'Geral',
     };
   }
 
@@ -92,7 +96,7 @@ class ProdutoModel {
     DateTime? atualizadoEm,
     int? estoque,
     bool? ativo,
-    String? categoria, // ADICIONE ESTE PARÂMETRO
+    String? categoria,
   }) {
     return ProdutoModel(
       id: id ?? this.id,
@@ -107,7 +111,7 @@ class ProdutoModel {
       atualizadoEm: atualizadoEm ?? this.atualizadoEm,
       estoque: estoque ?? this.estoque,
       ativo: ativo ?? this.ativo,
-      categoria: categoria ?? this.categoria, // ADICIONE ESTA LINHA
+      categoria: categoria ?? this.categoria,
     );
   }
 }

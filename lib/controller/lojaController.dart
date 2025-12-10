@@ -18,7 +18,6 @@ class LojaController with ChangeNotifier {
   File? _selectedImage;
   String _searchQuery = '';
 
-  // Getters
   List<ProdutoModel> get produtos => _produtos;
   List<ProdutoModel> get produtosFiltrados => _produtosFiltrados;
   bool get isLoading => _isLoading;
@@ -28,12 +27,10 @@ class LojaController with ChangeNotifier {
 
   List<ProdutoModel> get produtosAtivos => _produtos.where((p) => p.ativo).toList();
 
-  // Inicializar controller
   LojaController() {
     _loadProdutos();
   }
 
-  // Carregar produtos
   Future<void> _loadProdutos() async {
     try {
       _setLoading(true);
@@ -64,7 +61,6 @@ class LojaController with ChangeNotifier {
     }
   }
 
-  // Stream de produtos para atualização em tempo real
   Stream<List<ProdutoModel>> get produtosStream {
     return _firestore
         .collection('produtos_loja')
@@ -76,7 +72,6 @@ class LojaController with ChangeNotifier {
             .toList());
   }
 
-  // Método de pesquisa
   void searchProducts(String query) {
     _searchQuery = query.toLowerCase().trim();
     
@@ -97,14 +92,12 @@ class LojaController with ChangeNotifier {
     notifyListeners();
   }
 
-  // Limpar pesquisa
   void clearSearch() {
     _searchQuery = '';
     _produtosFiltrados = List.from(_produtos);
     notifyListeners();
   }
 
-  // Cadastrar novo produto
   Future<bool> cadastrarProduto({
     required String nome,
     required String descricao,
@@ -124,14 +117,12 @@ class LojaController with ChangeNotifier {
         return false;
       }
 
-      // Validar campos obrigatórios
       if (nome.isEmpty || descricao.isEmpty || preco.isEmpty || contato.isEmpty) {
         _error = 'Preencha todos os campos obrigatórios';
         _setLoading(false);
         return false;
       }
 
-      // Validar preço
       try {
         double.parse(preco.replaceAll(',', '.'));
       } catch (e) {
@@ -164,11 +155,9 @@ class LojaController with ChangeNotifier {
 
       print('✅ Produto salvo com ID: ${docRef.id}');
 
-      // Adicionar à lista local com o ID gerado
       final novoProduto = produto.copyWith(id: docRef.id);
       _produtos.insert(0, novoProduto);
       
-      // Atualizar lista filtrada
       if (_searchQuery.isEmpty) {
         _produtosFiltrados.insert(0, novoProduto);
       } else {
@@ -187,7 +176,6 @@ class LojaController with ChangeNotifier {
     }
   }
 
-  // Editar produto
   Future<bool> editarProduto({
     required String produtoId,
     required String nome,
@@ -209,7 +197,6 @@ class LojaController with ChangeNotifier {
         return false;
       }
 
-      // Verificar se o produto pertence ao usuário
       final produtoIndex = _produtos.indexWhere((p) => p.id == produtoId);
       if (produtoIndex == -1) {
         _error = 'Produto não encontrado';
@@ -249,7 +236,6 @@ class LojaController with ChangeNotifier {
           .doc(produtoId)
           .update(updateData);
 
-      // Atualizar lista local
       final produtoAtualizado = produtoAtual.copyWith(
         nome: nome,
         descricao: descricao,
@@ -262,7 +248,6 @@ class LojaController with ChangeNotifier {
 
       _produtos[produtoIndex] = produtoAtualizado;
       
-      // Atualizar lista filtrada
       final filteredIndex = _produtosFiltrados.indexWhere((p) => p.id == produtoId);
       if (filteredIndex != -1) {
         _produtosFiltrados[filteredIndex] = produtoAtualizado;
@@ -279,7 +264,6 @@ class LojaController with ChangeNotifier {
     }
   }
 
-  // Deletar produto
   Future<bool> deletarProduto(String produtoId) async {
     try {
       _setLoading(true);
@@ -292,7 +276,6 @@ class LojaController with ChangeNotifier {
         return false;
       }
 
-      // Verificar se o produto pertence ao usuário
       final produto = _produtos.firstWhere((p) => p.id == produtoId);
       if (produto.userId != usuarioAtual.uid) {
         _error = 'Você só pode deletar seus próprios produtos';
@@ -300,7 +283,6 @@ class LojaController with ChangeNotifier {
         return false;
       }
 
-      // Soft delete - marcar como inativo
       await _firestore
           .collection('produtos_loja')
           .doc(produtoId)
@@ -309,7 +291,6 @@ class LojaController with ChangeNotifier {
             'atualizadoEm': FieldValue.serverTimestamp(),
           });
 
-      // Remover da lista local
       _produtos.removeWhere((p) => p.id == produtoId);
       _produtosFiltrados.removeWhere((p) => p.id == produtoId);
 
@@ -322,7 +303,6 @@ class LojaController with ChangeNotifier {
     }
   }
 
-  // Buscar produtos do usuário atual
   List<ProdutoModel> getProdutosDoUsuario() {
     final usuarioAtual = _auth.currentUser;
     if (usuarioAtual == null) return [];
@@ -330,7 +310,6 @@ class LojaController with ChangeNotifier {
     return _produtos.where((p) => p.userId == usuarioAtual.uid).toList();
   }
 
-  // Buscar produto por ID
   ProdutoModel? getProdutoById(String produtoId) {
     try {
       return _produtos.firstWhere((p) => p.id == produtoId);
@@ -339,7 +318,6 @@ class LojaController with ChangeNotifier {
     }
   }
 
-  // Verificar se o usuário é dono do produto
   bool isProdutoDoUsuario(String produtoId) {
     final usuarioAtual = _auth.currentUser;
     if (usuarioAtual == null) return false;
@@ -352,7 +330,6 @@ class LojaController with ChangeNotifier {
     }
   }
 
-  // Selecionar imagem da galeria
   Future<void> selecionarImagem() async {
     try {
       final XFile? pickedFile = await _imagePicker.pickImage(
@@ -371,7 +348,6 @@ class LojaController with ChangeNotifier {
     }
   }
 
-  // Tirar foto com câmera
   Future<void> tirarFoto() async {
     try {
       final XFile? pickedFile = await _imagePicker.pickImage(
@@ -390,31 +366,26 @@ class LojaController with ChangeNotifier {
     }
   }
 
-  // Remover imagem selecionada
   void removerImagemSelecionada() {
     _selectedImage = null;
     notifyListeners();
   }
 
-  // Limpar imagem selecionada
   void _clearImage() {
     _selectedImage = null;
     notifyListeners();
   }
 
-  // Controlar estado de loading
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
   }
 
-  // Limpar erros
   void clearError() {
     _error = null;
     notifyListeners();
   }
 
-  // Forçar recarregamento
   Future<void> refresh() async {
     await _loadProdutos();
   }
